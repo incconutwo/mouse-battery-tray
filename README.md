@@ -88,6 +88,19 @@ immutable Inno Setup compiler download by SHA-256, and uploads the unsigned
 installer plus checksum as a workflow artifact. Code signing will be integrated
 through SignPath if the project is accepted by SignPath Foundation.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/),
+certificate by [SignPath Foundation](https://signpath.org/). This policy becomes
+active if the project is accepted; release v1.2.0 is currently unsigned.
+
+- Committer and reviewer: [Kobus van Wyk (`subok911`)](https://github.com/subok911)
+- Approver: [Kobus van Wyk (`subok911`)](https://github.com/subok911)
+- Every signing request requires manual approval by the approver.
+- This program will not transfer any information to other networked systems
+  unless specifically requested by the user or the person installing or
+  operating it.
+
 ## Privacy and security
 
 The application reads local USB HID input reports and its own per-user Windows
