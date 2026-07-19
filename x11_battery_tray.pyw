@@ -2,10 +2,19 @@ import sys
 import os
 import time
 import threading
+import ctypes
+import webbrowser
 import hid
 from PIL import Image, ImageDraw, ImageFont
 import pystray
 import winreg
+
+APP_NAME = "Attack Shark Battery Tray"
+APP_VERSION = "1.2.0"
+PROJECT_URL = "https://github.com/subok911/attack-shark-battery-tray"
+MUTEX_NAME = "AttackSharkBatteryTray_SingleInstance"
+ERROR_ALREADY_EXISTS = 183
+_mutex_handle = None
 
 # USB VID for Attack Shark / Beken OEM
 VID = 0x1d57
@@ -71,7 +80,7 @@ class BatteryTrayApp:
         self.running = True
         self.device = None
         self.last_battery = -1
-        self.status = "disconnected" # "connected", "charging", "disconnected"
+        self.status = "disconnected" # "connected", "waiting", "charging", "disconnected"
         self.current_model = "Attack Shark X11" # Default fallback name
         
         # Start background polling thread
@@ -108,6 +117,8 @@ class BatteryTrayApp:
     def get_icon_data(self):
         if self.status == "disconnected":
             return self.create_image("??", (150, 150, 150))
+        elif self.status == "waiting":
+            return self.create_image("--", (150, 150, 150))
         elif self.status == "charging":
             return self.create_image("Chg", (52, 152, 219)) # Blue
         else:
@@ -132,6 +143,8 @@ class BatteryTrayApp:
         model = self.current_model or "Attack Shark Mouse"
         if self.status == "disconnected":
             self.icon.title = f"{model}: Disconnected"
+        elif self.status == "waiting":
+            self.icon.title = f"{model}: Move the mouse to read its battery"
         elif self.status == "charging":
             self.icon.title = f"{model}: Charging/Wired"
         else:
@@ -194,11 +207,9 @@ class BatteryTrayApp:
                 dev.open_path(path)
                 dev.set_nonblocking(True)
                 
-                if self.status == "disconnected" or self.status == "charging":
-                    # Temporarily set status to wireless but we wait for first battery packet to update percentage
-                    self.status = "connected"
-                    if self.last_battery == -1:
-                        self.last_battery = 100 # Default fallback
+                if self.status in ("disconnected", "charging"):
+                    # Do not display a made-up percentage while waiting for the first packet.
+                    self.status = "waiting" if self.last_battery == -1 else "connected"
                     self.update_tray()
                 
                 last_recv_time = time.time()
@@ -243,10 +254,14 @@ class BatteryTrayApp:
         new_state = not item.checked
         set_startup(new_state)
 
+    def open_project_page(self, icon, item):
+        webbrowser.open(PROJECT_URL)
+
     def run(self):
         # Create system tray icon
         menu = pystray.Menu(
             pystray.MenuItem("Start with Windows", self.toggle_startup, checked=lambda item: is_startup_enabled()),
+            pystray.MenuItem("Open source project", self.open_project_page),
             pystray.MenuItem("Exit", self.on_exit)
         )
         self.icon = pystray.Icon(
@@ -262,6 +277,26 @@ class BatteryTrayApp:
         # Run the system tray icon event loop (blocks until stopped)
         self.icon.run()
 
+def acquire_single_instance():
+    global _mutex_handle
+    _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    if not _mutex_handle:
+        return False
+    if ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+        ctypes.windll.kernel32.CloseHandle(_mutex_handle)
+        _mutex_handle = None
+        return False
+    return True
+
+
 if __name__ == "__main__":
+    if not acquire_single_instance():
+        ctypes.windll.user32.MessageBoxW(
+            None,
+            "Attack Shark Battery Tray is already running in the notification area.",
+            APP_NAME,
+            0x40,
+        )
+        raise SystemExit(0)
     app = BatteryTrayApp()
     app.run()
