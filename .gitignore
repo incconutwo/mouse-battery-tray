@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+
+.build-venv/
+build/
+dist/
+release/
+
+assets/*.ico
+assets/*.png
+
+*.log
+*.tmp

@@ -1,96 +1,110 @@
-# Attack Shark Mouse Battery Tray Indicator
+# Attack Shark Battery Tray
 
-<img src="https://github.com/user-attachments/assets/4e384838-6073-4457-827c-737c18f909f2" alt="Attack Shark Battery Tray Screenshot" width="150" align="right">
+A lightweight Windows notification-area application that displays the live
+battery percentage reported by compatible Attack Shark and Beken-based wireless
+mice. The Attack Shark X11 is verified with its 2.4 GHz USB receiver.
 
-A lightweight, standalone Windows system tray application that displays the live battery percentage of Beken/Sino Wealth based wireless gaming mice (such as the Attack Shark X11, R1, X3, X6, etc.) directly in the taskbar.
+This repository is a community-maintained fork of
+[incconutwo/attack-shark-battery-tray](https://github.com/incconutwo/attack-shark-battery-tray).
+It adds a repeatable installer build with pinned dependencies, single-instance protection, accurate
+startup status, packaging metadata, CI, security documentation, and complete
+open-source attribution.
 
-This tool serves as a lightweight alternative to the official, resource-heavy manufacturer hub software.
-
----
-
-## Supported Devices Status
-
-The application officially recognizes the following models, with a dynamic generic fallback that supports other compatible Beken/Sino Wealth OEM mice:
-
-| Mouse Model | Wireless (2.4G) | Wired / Charging | Status Notes |
-| :--- | :---: | :---: | :--- |
-| **Attack Shark X11** | 🟢 Supported | 🟢 Supported | Verified and fully mapped |
-| **Attack Shark X6** | 🟢 Supported | 🟢 Supported | Verified and fully mapped |
-| **Attack Shark R1** | 🟢 Supported | 🟢 Supported | Wireless auto-detected generically |
-| **Attack Shark X3** | 🟢 Supported | 🟢 Supported | Wireless auto-detected generically |
-| **Other Beken OEM Mice** | 🟡 Auto-Detected | 🟡 Auto-Detected | Works generically via fallback logic |
-
----
-
-## Contributing & Adding New Models
-
-If your mouse is not fully recognized or is displayed as a generic device, we would love to add official support for it! 
-
-We've made this process incredibly easy by including a standalone **Hardware ID Extractor wizard** (`dump_devices.exe`):
-
-1. Go to the [Releases page](https://github.com/incconutwo/attack-shark-battery-tray/releases) and download **`dump_devices.exe`** (or run `python dump_devices.py`).
-2. Run it and follow the simple 2-step prompt to scan your mouse in **Wireless (2.4G)** and **Wired** modes.
-3. The wizard will automatically generate the clean Python dictionary configuration lines for your device.
-4. Copy the generated block and paste it into a GitHub issue or Reddit reply!
-
-If you want to manually add support yourself, you can simply append your Product ID to the `SUPPORTED_DEVICES` dictionary at the top of `x11_battery_tray.pyw`:
-
-```python
-SUPPORTED_DEVICES = {
-    0xYOUR_PID_HEX: ("Your Mouse Name", "wireless"),
-}
-```
-
----
+The project is not affiliated with or endorsed by Attack Shark.
 
 ## Features
 
-- **Live Numeric Percentage:** Displays the exact battery level directly on the tray icon as a colored number.
-- **Color-Coded Status:**
-  - 🟢 **Green** ($\ge 50\%$) - Healthy charge
-  - 🟠 **Orange** ($20\% - 49\%$) - Moderate charge
-  - 🔴 **Red** ($< 20\%$) - Low battery (time to charge)
-- **Charging Detection:** Automatically detects wired connection/charging state and displays **`Chg`** (in blue).
-- **Offline Detection:** Displays **`??`** (in grey) if the mouse goes out of range or is switched off.
-- **Start with Windows Toggle:** Right-click the icon to toggle startup behavior. It writes directly to your user registry (`HKCU`), requiring **zero Administrator (UAC) prompts**.
-- **Universal Compatibility:** Works generically with any mouse using Beken-OEM firmware (`VID: 0x1d57`) and reads the device product string to show customized tooltips.
-- **Ultralight:** Uses near-zero CPU and negligible RAM.
+- Live numeric battery percentage in the Windows notification area.
+- Green, orange, and red status colours based on charge level.
+- Charging/wired, waiting, and disconnected states.
+- Optional per-user launch at sign-in; no administrator rights required.
+- Single-instance protection.
+- No telemetry or background network requests.
+- Fully open-source Windows installer build with pinned dependencies.
 
----
+## Supported devices
 
-## Installation
+| Mouse | 2.4 GHz | Wired/charging | Notes |
+|---|:---:|:---:|---|
+| Attack Shark X11 | Yes | Yes | Verified and fully mapped |
+| Attack Shark X6 | Yes | Yes | Verified and fully mapped upstream |
+| Attack Shark R1 | Auto-detected | Yes | Wireless endpoint uses generic fallback |
+| Attack Shark X3 | Auto-detected | Yes | Wireless endpoint uses generic fallback |
+| Other Beken OEM mice (`VID 0x1d57`) | Best effort | Best effort | Generic endpoint fallback |
 
-### Prerequisites
-Make sure you have [Python 3.10+](https://www.python.org/) installed and added to your system PATH.
+## Install and use
 
-### Install Dependencies
-Open your terminal (Command Prompt or PowerShell) and run:
-```bash
-pip install hidapi pystray pillow
+Download the latest installer from this repository's Releases page.
+
+1. Put the mouse in 2.4G mode and connect its USB receiver.
+2. Start **Attack Shark Battery Tray** from the Start menu.
+3. Move the mouse to trigger its first battery packet.
+4. Find the coloured number under the taskbar notification-area arrow (`^`).
+5. Right-click the number to toggle **Start with Windows** or exit.
+
+The display uses these states:
+
+- Green: 50% or higher.
+- Orange: 20-49%.
+- Red: below 20%.
+- `Chg`: wired/charging mode detected.
+- `--`: waiting for a battery packet.
+- `??`: compatible receiver not detected.
+
+The official mouse software can claim the same HID endpoint. Close it if this
+application cannot receive battery packets.
+
+## Run from source
+
+Requirements: Windows 10 or 11 and Python 3.11.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\pythonw.exe .\x11_battery_tray.pyw
 ```
 
----
+## Reproducible build
 
-## How to Run
+The build contains only the source in this repository and the pinned
+open-source dependencies listed in `requirements-build.txt` and
+`THIRD_PARTY_NOTICES.md`.
 
-1. **Run in Background (Recommended):**
-   Run the file using `pythonw` (or double-click the `.pyw` extension) to start it silently in the background:
-   ```bash
-   pythonw x11_battery_tray.pyw
-   ```
-2. **Run in Terminal (Debugging):**
-   If you want to view console logs:
-   ```bash
-   python x11_battery_tray.pyw
-   ```
+Install Inno Setup 6, then run:
 
----
+```powershell
+winget install --id JRSoftware.InnoSetup -e
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+```
 
-## Troubleshooting
+To build only the standalone PyInstaller application:
 
-- **Icon Stays on `??`:** 
-  Ensure the mouse is turned on, in wireless mode (using the 2.4G adapter), and not asleep. Wake the mouse by moving it around for the first battery status packet to transmit.
-- **Permissions Issue:**
-  The app runs entirely in user-space and does not require admin rights. If the tray icon doesn't update, check if another exclusive tool (like the official software) is currently open and locking the USB receiver port.
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -SkipInstaller
+```
 
+GitHub Actions repeats the same build on a clean Windows runner, verifies the
+immutable Inno Setup compiler download by SHA-256, and uploads the unsigned
+installer plus checksum as a workflow artifact. Code signing will be integrated
+through SignPath if the project is accepted by SignPath Foundation.
 
+## Privacy and security
+
+The application reads local USB HID input reports and its own per-user Windows
+startup registry value. It does not collect telemetry or transmit device data.
+It opens a browser only when the user selects **Open source project**.
+
+Please report vulnerabilities through GitHub private vulnerability reporting.
+See `SECURITY.md`.
+
+## Adding another mouse
+
+Run `dump_devices.py` and follow its wireless and wired scanning prompts. Add
+confirmed product IDs to `SUPPORTED_DEVICES` in `x11_battery_tray.pyw` and open
+a pull request with the captured endpoint details.
+
+## License and attribution
+
+MIT License. Original copyright (c) 2026 incconu_two. Modifications are
+distributed under the same license. See `LICENSE` and
+`THIRD_PARTY_NOTICES.md`.
