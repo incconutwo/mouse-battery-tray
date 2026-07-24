@@ -58,6 +58,12 @@ SUPPORTED_DEVICES = {
     # Hitscan Hyperlight (Thanks to @Vinsmok3)
     (0x3770, 0x0300): ("Hitscan Hyperlight", "wireless"),
     0x0300: ("Hitscan Hyperlight", "wireless"),
+
+    # Incott G24 Pro
+    (0x093a, 0x522c): ("Incott G24 Pro", "wireless"),
+    (0x093a, 0x622c): ("Incott G24 Pro", "wired"),
+    0x522c: ("Incott G24 Pro", "wireless"),
+    0x622c: ("Incott G24 Pro", "wired"),
 }
 
 # =============================================================================

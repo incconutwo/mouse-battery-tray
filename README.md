@@ -10,21 +10,20 @@ This tool serves as a lightweight alternative to resource-heavy official manufac
 
 ## Supported Devices Status
 
-The application officially recognizes the following models, with a dynamic generic fallback that supports other compatible OEM mice:
+The application officially recognizes the following models, with dynamic fallback support for compatible OEM mice:
 
-| Mouse Model | Wireless (2.4G) | Wired / Charging | Status Notes |
-| :--- | :---: | :---: | :--- |
-| **WLMouse Beast X Mini Pro** | 🟢 Supported | 🟢 Supported | Verified 8K receiver (VID 0x36a7) |
-| **WLMouse Beast X** | 🟢 Supported | 🟢 Supported | Verified base model (VID 0x36a7) |
-| **Attack Shark X11** | 🟢 Supported | 🟢 Supported | Verified and fully mapped |
-| **Attack Shark X6** | 🟢 Supported | 🟢 Supported | Verified and fully mapped |
-| **Pulsar Xlite Wireless** | 🟢 Supported | 🟢 Supported | Verified and fully mapped (CompX) |
-| **Pulsar 8K Dongle Gen.2** | 🟢 Supported | 🟡 Untested | Verified 8K wireless dongle (VID 0x3710) |
-| **Attack Shark R1** | 🟢 Supported | 🟢 Supported | Wireless auto-detected generically |
-| **Attack Shark X3** | 🟢 Supported | 🟢 Supported | Wireless auto-detected generically |
-| **VXE R1 Series (R1 / SE / SE+)** | 🟢 Supported | 🟢 Supported | CompX/Evision/Zikway dongles (VID 0x3554, 0x320f, 0x3537) |
-| **Hitscan Hyperlight** | 🟢 Supported | 🟡 Untested | Verified 8K wireless dongle (VID 0x3770) |
-| **Other Beken/CompX/WLMouse** | 🟡 Auto-Detected | 🟡 Auto-Detected | Works generically via fallback logic |
+| Brand | Model | 2.4G Wireless | Wired / Charging | Notes |
+| :--- | :--- | :---: | :---: | :--- |
+| **WLMouse** | Beast X / Mini Pro | 🟢 | 🟢 | 8K Receiver (`VID 0x36a7`) |
+| **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
+| **Pulsar** | Xlite Wireless | 🟢 | 🟢 | CompX OEM |
+| | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
+| **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
+| **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
+| **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |
+| **Generic** | Other Beken / CompX / WLMouse | 🟡 | 🟡 | Dynamic OEM fallback |
+
+> **Status Key:** 🟢 Supported & Verified &nbsp;|&nbsp; 🟡 Auto-Detected / Untested
 
 ---
 
