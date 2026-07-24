@@ -218,6 +218,9 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
             elif fallback is None:
                 fallback = item
 
+        if p1_match:
+            break
+
     if p1_match:
         return p1_match
     if p2_match:

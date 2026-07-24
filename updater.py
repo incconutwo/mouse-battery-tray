@@ -1,6 +1,6 @@
 from typing import List
 
-__version__ = "v1.2.1"
+__version__ = "v1.2.2-beta.1"
 GITHUB_REPO_URL = "https://github.com/incconutwo/mouse-battery-tray"
 GITHUB_RELEASES_API = "https://api.github.com/repos/incconutwo/mouse-battery-tray/releases/latest"
 GITHUB_RELEASES_URL = "https://github.com/incconutwo/mouse-battery-tray/releases/latest"

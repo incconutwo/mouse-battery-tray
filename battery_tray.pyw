@@ -197,40 +197,43 @@ class BatteryTrayApp:
         self.status = "charging" if charging else "connected"
         
         now = time.time()
+        time_since_last_poll = now - getattr(self, '_last_update_call', now)
+        self._last_update_call = now
+        pc_slept = (time_since_last_poll > 1800)
+
         if charging:
             self.battery_history.clear()
             self.is_anchored = False
             set_battery_history([], False)
         elif battery >= 0:
             if not self.battery_history:
-                # App started tracking at initial level (e.g. 81%). Wait for first drop to anchor.
                 self.battery_history = [(now, battery)]
                 self.is_anchored = False
                 set_battery_history(self.battery_history, False)
             else:
                 last_time, last_pct = self.battery_history[-1]
-                time_since_last = now - last_time
                 
-                # Exclude long idle / PC sleep gaps (> 30 min without a drop)
-                if time_since_last > 1800 and battery != last_pct:
+                if pc_slept and battery != last_pct:
+                    # Battery changed while PC was asleep; drop time is unknown.
                     self.battery_history = [(now, battery)]
                     self.is_anchored = False
                     set_battery_history(self.battery_history, False)
                 elif battery < last_pct:
                     # Battery level dropped!
                     if not self.is_anchored:
-                        # First drop (e.g. 81% -> 80%). Anchor this timestamp for 80%!
-                        self.battery_history = [(now, battery)]
+                        # First drop: anchor the initial timestamp if we monitored it continuously.
+                        # This gives an estimate on the first drop.
+                        self.battery_history.append((now, battery))
                         self.is_anchored = True
                     else:
-                        # Subsequent drop (e.g. 80% -> 79%). Append to history.
+                        # Subsequent drop. Append to history.
                         self.battery_history.append((now, battery))
+                        
                     # Prune stale entries (>4h) BEFORE saving to registry
                     self.battery_history = [(t, b) for t, b in self.battery_history if now - t <= 14400]
                     set_battery_history(self.battery_history, True)
                 elif battery > last_pct + 5:
                     # Battery increased significantly without charging flag: reset history.
-                    # +5 buffer avoids over-sensitive resets from minor reconnect fluctuations.
                     self.battery_history = [(now, battery)]
                     self.is_anchored = False
                     set_battery_history(self.battery_history, False)
@@ -405,8 +408,9 @@ class BatteryTrayApp:
                                 self.current_model = BEKEN_DEVICE_NAMES[device_id]
                             
                             raw_batt = data[4]
-                            # Some firmware (e.g. X6) reports battery on a 1-10 scale (10 = 100%)
-                            if 0 < raw_batt <= 10:
+                            # Only apply 1-10 scale specifically to X6 (0x85) to avoid 
+                            # normal mice jumping to 100% when they reach 10% battery!
+                            if device_id == 0x85 and 0 < raw_batt <= 10:
                                 battery = raw_batt * 10
                             else:
                                 battery = raw_batt
