@@ -36,6 +36,8 @@ from devices import (
     read_wlmouse_battery,
     find_razer,
     read_razer_battery,
+    find_turtlebeach,
+    read_turtlebeach_battery,
     BEKEN_DEVICE_NAMES,
 )
 from icon_drawer import get_icon_data
@@ -362,6 +364,18 @@ class BatteryTrayApp:
             if razer_path:
                 self.current_model = razer_name
                 battery, charging = read_razer_battery(razer_path)
+                if battery is not None:
+                    self.update_battery_level(battery, bool(charging))
+                else:
+                    self.status = "unknown"
+                    self.update_tray()
+                time.sleep(10)
+                continue
+
+            tb_path, tb_name, tb_pid = find_turtlebeach()
+            if tb_path:
+                self.current_model = tb_name
+                battery, charging = read_turtlebeach_battery(tb_path)
                 if battery is not None:
                     self.update_battery_level(battery, bool(charging))
                 else:
