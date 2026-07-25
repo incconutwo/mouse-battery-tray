@@ -4,6 +4,32 @@ All notable changes to the Mouse Battery Tray project are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.2] - 2026-07-25
+
+### 🚀 New Device Support & Protocols
+
+- **Razer Universal Wireless Support:** Added Razer mouse support (`VID 0x1532`) featuring OpenRazer 90-byte Feature Report active querying (`Class 0x07`, `Command 0x02` with XOR checksum calculation). Supports **Razer HyperPolling Wireless Dongle** (`PID 0x00b3`) and all modern wireless Razer mice out-of-the-box via dynamic PID fallback.
+- **Pulsar X2 Series:** Added mapping for **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
+- **Incott G24 Pro:** Added mapping for **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`) and broadened `0x03` battery report matching for PixArt 8K telemetry packets.
+- **VXE R1 Series Optimization:** Prioritized HID Endpoint 2 / Usage Page 10 for VXE R1, R1 SE, and R1 SE+ to resolve "Waiting for battery reading..." delays.
+
+### 🐛 Bug Fixes & Stability Improvements
+
+- **PC-Sleep Gap & Hours Estimation Overhaul:** Fixed PC sleep detection to track time between polling loops instead of time between battery drops. Battery percentage drops now anchor and estimate remaining hours accurately without false resets.
+- **Non-Mouse Peripheral Filter:** Added strict HID filtering in `devices.py` to ignore keyboards, microphones, and USB audio dongles sharing standard VIDs (e.g. `0x258a`), resolving false "Gaming Keyboard" detection.
+- **Auto-Switching on Receiver Re-plug:** Fixed polling loop to detect device path changes (`path_check != path`), allowing the app to seamlessly auto-switch when receivers are re-plugged or mice are reconnected.
+- **Attack Shark X6 Battery Scale Fix:** Restricted 10x battery scaling multiplier exclusively to X6 firmware (`device_id 0x85`), preventing standard mice from jumping to 100% when reaching 10% battery.
+- **False Dock Charging State (`Chg`) Guard:** Restricted non-zero byte checks to confirmed Beken devices to prevent movement packets from false-triggering `Chg` status on VXE / Hitscan mice.
+
+### 🎨 Documentation & UI
+
+- **Tray Menu Clean-up:** Updated tray context menu item to clean text `"Donate / Support"`.
+- **README Enhancements:** Added modern Shields.io header badges (Platform, Release, Downloads, License, Ko-fi) and a direct Download button featuring a Lucide SVG download icon.
+- **Community Credits:** Added acknowledgments for **u/MarcBelmaati**, **u/Monophonotronic**, **u/djnemoson**, **@nzeck1**, **@Vinsmok3**, and community contributors.
+- **GitHub Sponsor Integration:** Created `.github/FUNDING.yml` for native GitHub sponsorship support.
+
+---
+
 ## [v1.2.1] - 2026-07-24
 
 ### 🐛 Bug Fixes & Improvements
