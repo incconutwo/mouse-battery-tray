@@ -385,7 +385,13 @@ def find_turtlebeach() -> Tuple[Optional[str], Optional[str], Optional[int]]:
 
 
 def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
-    """Active query for Turtle Beach / Roccat battery % and charging status."""
+    """Active query for Turtle Beach / Roccat battery % and charging status.
+    
+    Turtle Beach / Roccat Nordic-based mice (e.g., Kone XP Air) report remaining
+    battery in 5 discrete levels (0..5), mapping to 0%, 20%, 40%, 60%, 80%, 100%.
+    Feature Report 0x06 byte offset 41 contains the discrete battery level step,
+    and byte offset 30 indicates charging status.
+    """
     try:
         dev = hid.device()
         dev.open_path(path.encode('utf-8') if isinstance(path, str) else path)
@@ -394,16 +400,29 @@ def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
         return None, None
 
     try:
-        # Step 1: Send feature reports (0x06 and 0x07) to unlock/refresh telemetry
+        # Step 1: Send feature report query [0x06, 0x07] to refresh battery telemetry
         try:
-            dev.send_feature_report(bytes([0x06, 0x00, 0x00] + [0] * 62))
-            dev.send_feature_report(bytes([0x07, 0x07, 0x09] + [0] * 62))
+            dev.send_feature_report(bytes([0x06, 0x07] + [0] * 63))
         except OSError:
             pass
 
         time.sleep(0.03)
 
-        # Step 2: Try active query write packet [0x09, 0x06, 0x00...] (Dock / Dongle active mode)
+        # Step 2: Query Feature Report 0x06 (byte 41 contains 5-step battery level 0..5)
+        try:
+            f_resp = dev.get_feature_report(0x06, 65)
+            if f_resp and len(f_resp) >= 42 and f_resp[0] == 0x06:
+                d = list(f_resp)
+                raw_level = d[41]
+                charging = bool(d[30] in (0x01, 0x02, 0x03, 0x80))
+                if 0 <= raw_level <= 5:
+                    return raw_level * 20, charging
+                elif 0 <= raw_level <= 100:
+                    return raw_level, charging
+        except OSError:
+            pass
+
+        # Step 3: Active write query fallback [0x09, 0x06, 0x00...] (Dock / Dongle active mode)
         query = [0x09, 0x06, 0x00] + [0] * 61
         try:
             dev.write(bytes(query))
@@ -417,25 +436,16 @@ def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
             except OSError:
                 resp = None
 
-            if resp and len(resp) >= 4:
+            if resp and len(resp) >= 10:
                 d = list(resp)
                 if d[0] == 0x08:
-                    batt = d[2]
+                    raw_val = d[9] if (0 <= d[9] <= 5) else d[2]
                     charging = bool(d[3] in (0x02, 0x03, 0x80))
-                    if 0 <= batt <= 100:
-                        return batt, charging
+                    if 0 <= raw_val <= 5:
+                        return raw_val * 20, charging
+                    elif 0 <= raw_val <= 100:
+                        return raw_val, charging
             time.sleep(0.02)
-
-        # Step 3: Query Feature Report 0x06 (Dongle Standalone & Dock Fallback)
-        try:
-            f_resp = dev.get_feature_report(0x06, 65)
-            if f_resp and len(f_resp) >= 4 and f_resp[0] == 0x06:
-                raw_batt = f_resp[3] if f_resp[3] > 0 else f_resp[2]
-                charging = bool(f_resp[2] in (0x02, 0x03, 0x80))
-                if 0 <= raw_batt <= 100:
-                    return raw_batt, charging
-        except OSError:
-            pass
 
         return None, None
     finally:
