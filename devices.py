@@ -65,7 +65,7 @@ SUPPORTED_DEVICES = {
     0x522c: ("Incott G24 Pro", "wireless"),
     0x622c: ("Incott G24 Pro", "wired"),
 
-    # Razer HyperPolling / Mouse Series
+    # Razer HyperPolling / Mouse Series (Thanks to u/MarcBelmaati)
     (0x1532, 0x00b3): ("Razer HyperPolling Dongle", "wireless"),
     (0x1532, 0x00a5): ("Razer Mouse", "wired"),
     0x00b3: ("Razer HyperPolling Dongle", "wireless"),

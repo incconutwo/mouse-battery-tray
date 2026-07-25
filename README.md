@@ -8,7 +8,7 @@
 
 <img src="https://github.com/user-attachments/assets/4e384838-6073-4457-827c-737c18f909f2" alt="Mouse Battery Tray Screenshot" width="150" align="right">
 
-A lightweight, standalone Windows system tray application that displays the live battery percentage of wireless gaming mice (Attack Shark, Pulsar, WLMouse Beast X family, Beken/CompX OEM, etc.) directly in the taskbar.
+A lightweight, standalone Windows system tray application that displays the live battery percentage of wireless gaming mice (Attack Shark, Pulsar, Razer, WLMouse Beast X family, Beken/CompX OEM, etc.) directly in the taskbar.
 
 [<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg> **Download Latest Release (MouseBatteryTray.exe)**](https://github.com/incconutwo/mouse-battery-tray/releases/latest)
 
@@ -23,13 +23,15 @@ The application officially recognizes the following models, with dynamic fallbac
 | Brand | Model | 2.4G Wireless | Wired / Charging | Notes |
 | :--- | :--- | :---: | :---: | :--- |
 | **WLMouse** | Beast X / Mini Pro | 🟢 | 🟢 | 8K Receiver (`VID 0x36a7`) |
+| **Razer** | Universal Wireless Series | 🟢 | 🟢 | OpenRazer 90-Byte Query (`VID 0x1532`) |
+| | HyperPolling Dongle | 🟢 | 🟢 | Dongle (`PID 0x00b3`) |
 | **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
 | **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
 | | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
 | **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
 | **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |
-| **Generic** | Other Beken / CompX / WLMouse | 🟡 | 🟡 | Dynamic OEM fallback |
+| **Generic** | Other Beken / CompX / WLMouse / Razer | 🟡 | 🟡 | Dynamic OEM fallback |
 
 > **Status Key:** 🟢 Supported & Verified &nbsp;|&nbsp; 🟡 Auto-Detected / Untested
 
@@ -69,7 +71,7 @@ SUPPORTED_DEVICES = {
 - **Update Checker:** Asynchronously checks for new releases on GitHub directly from the right-click tray menu (`Check for Updates`).
 - **Clean Connection & Charging States:** Displays **`Chg`** (blue) while charging, **`--`** (grey) while awaiting initial reading, and **`??`** when disconnected.
 - **Start with Windows Toggle:** Right-click the icon to toggle startup behavior. It writes directly to your user registry (`HKCU`), requiring **zero Administrator (UAC) prompts**.
-- **Multi-Brand Compatibility:** Supports Beken-OEM firmware (`VID: 0x1d57`), CompX/Pulsar (`VID: 0x25a7`, `0x3710`), and WLMouse (`VID: 0x36a7`).
+- **Multi-Brand Compatibility:** Supports Razer (`VID: 0x1532`), Beken-OEM firmware (`VID: 0x1d57`), CompX/Pulsar (`VID: 0x25a7`, `0x3710`), PixArt (`VID: 0x093a`), and WLMouse (`VID: 0x36a7`).
 
 
 ---
@@ -113,7 +115,7 @@ pip install hidapi pystray pillow
 
 ## Acknowledgments & Credits
 
-Special thanks to all community members who contributed device ID mappings and hardware dumps:
+Special thanks to all community members who contributed device ID mappings and hardware dumps *(if I accidentally missed your name, please open an issue or reply so I can add you!)*:
 
 - **[@len0c](https://github.com/len0c)** – Reverse-engineered HID protocol handling and initial integration for the **WLMouse Beast X** series.
 - **[@HarukaYamamoto0](https://github.com/HarukaYamamoto0)** – Shared additional Beken OEM model device ID mappings ([attack-shark-x11-driver](https://github.com/HarukaYamamoto0/attack-shark-x11-driver)).
@@ -122,4 +124,5 @@ Special thanks to all community members who contributed device ID mappings and h
 - **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`, `PID 0x0300`).
 - **u/Monophonotronic** – Provided hardware ID dump for the **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`).
 - **u/djnemoson** – Provided hardware ID dump for the **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
-- **TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless**.
+- **u/MarcBelmaati** – Provided hardware ID dump for the **Razer Wireless / HyperPolling Dongle** (`VID 0x1532`, `PID 0x00b3` / `0x00a5`).
+- **u/TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless**.
