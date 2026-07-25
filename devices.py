@@ -2,10 +2,13 @@ import time
 import hid
 from typing import Optional, Tuple, List
 
-# =============================================================================
-# Supported Standard Devices (Beken, CompX, Pulsar, etc.)
-# =============================================================================
-SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532}
+NON_MOUSE_KEYWORDS = [
+    'keyboard', 'microphone', 'audio', 'headset', 'sound',
+    'argb', 'chroma', 'controller', 'rgb', 'lighting', 'pad',
+    'mat', 'docking', 'stand', 'camera', 'stream', 'deck', 'keypad'
+]
+
+SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770}
 
 BEKEN_DEVICE_NAMES = {
     0x55: "Attack Shark X11",
@@ -64,12 +67,15 @@ SUPPORTED_DEVICES = {
     (0x093a, 0x622c): ("Incott G24 Pro", "wired"),
     0x522c: ("Incott G24 Pro", "wireless"),
     0x622c: ("Incott G24 Pro", "wired"),
-
-    # Razer HyperPolling / Mouse Series (Thanks to u/MarcBelmaati)
-    (0x1532, 0x00b3): ("Razer HyperPolling Dongle", "wireless"),
-    (0x1532, 0x00a5): ("Razer Mouse", "wired"),
-    0x00b3: ("Razer HyperPolling Dongle", "wireless"),
-    0x00a5: ("Razer Mouse", "wired"),
+    # Turtle Beach / Roccat Kone XP Air
+    (0x10f5, 0x5015): ("Turtle Beach Kone XP Air", "wired"),
+    (0x10f5, 0x5017): ("Turtle Beach Kone XP Air", "wireless"),
+    (0x10f5, 0x5018): ("Turtle Beach Kone XP Air", "wired"),
+    (0x10f5, 0x5019): ("Turtle Beach Kone XP Air Docking", "wireless"),
+    0x5015: ("Turtle Beach Kone XP Air", "wired"),
+    0x5017: ("Turtle Beach Kone XP Air", "wireless"),
+    0x5018: ("Turtle Beach Kone XP Air", "wired"),
+    0x5019: ("Turtle Beach Kone XP Air Docking", "wireless"),
 }
 
 # =============================================================================
@@ -199,8 +205,8 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
         pid = d['product_id']
         if vid in SUPPORTED_VIDS:
             prod_string = str(d.get('product_string', '')).lower()
-            # Ignore keyboards, microphones, and audio peripherals sharing the same VID
-            if any(k in prod_string for k in ['keyboard', 'microphone', 'audio', 'headset', 'sound']):
+            # Ignore keyboards, ARGB controllers, audio, and non-mouse peripherals sharing the same VID
+            if any(k in prod_string for k in NON_MOUSE_KEYWORDS):
                 continue
 
             if_num = d.get('interface_number', -1)
@@ -278,6 +284,9 @@ def find_razer() -> Tuple[Optional[str], Optional[str], Optional[int]]:
     fallback = None
     for d in hid.enumerate(RAZER_VID):
         pid = d['product_id']
+        prod_string = str(d.get('product_string', '')).lower()
+        if any(k in prod_string for k in NON_MOUSE_KEYWORDS):
+            continue
         name = RAZER_DEVICES.get(pid) or d.get('product_string') or "Razer Device"
         usage_page = d.get('usage_page', 0)
         usage = d.get('usage', 0)
@@ -336,6 +345,107 @@ def read_razer_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
                         if batt is not None:
                             return batt, charging
             time.sleep(0.03)
+        return None, None
+    finally:
+        try:
+            dev.close()
+        except Exception:
+            pass
+
+
+# =============================================================================
+# Turtle Beach / Roccat Wireless Protocol (Kone XP Air / Docking)
+# =============================================================================
+TURTLEBEACH_VID = 0x10f5
+
+TURTLEBEACH_DEVICES = {
+    0x5017: "Turtle Beach Kone XP Air",
+    0x5018: "Turtle Beach Kone XP Air (Wired)",
+    0x5019: "Turtle Beach Kone XP Air Docking",
+}
+
+
+def find_turtlebeach() -> Tuple[Optional[str], Optional[str], Optional[int]]:
+    """Return (path, model_name, pid) for Turtle Beach / Roccat vendor interface."""
+    p1_match = None
+    fallback = None
+    for d in hid.enumerate(TURTLEBEACH_VID):
+        pid = d['product_id']
+        name = TURTLEBEACH_DEVICES.get(pid) or d.get('product_string') or "Turtle Beach Mouse"
+        usage_page = d.get('usage_page', 0)
+        item = (d['path'], name, pid)
+
+        if usage_page == 0xff03:
+            p1_match = item
+            break
+        elif usage_page >= 0xff00 and fallback is None:
+            fallback = item
+
+    match = p1_match or fallback
+    return match if match else (None, None, None)
+
+
+def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
+    """Active query for Turtle Beach / Roccat battery % and charging status.
+    
+    Turtle Beach / Roccat Nordic-based mice (e.g., Kone XP Air) report raw battery %
+    and status in Feature Report 0x06:
+    - Byte 3 contains the exact 1% granular battery percentage.
+    - Byte 30 indicates charging status (0x01/0x02/0x03/0x80 = charging).
+    - Byte 41 contains a coarse 5-step level (0..5) used as fallback.
+    """
+    try:
+        dev = hid.device()
+        dev.open_path(path.encode('utf-8') if isinstance(path, str) else path)
+        dev.set_nonblocking(True)
+    except OSError:
+        return None, None
+
+    try:
+        # Step 1: Send feature report query [0x06, 0x07] to refresh battery telemetry
+        try:
+            dev.send_feature_report(bytes([0x06, 0x07] + [0] * 63))
+        except OSError:
+            pass
+
+        time.sleep(0.03)
+
+        # Step 2: Query Feature Report 0x06
+        try:
+            f_resp = dev.get_feature_report(0x06, 65)
+            if f_resp and len(f_resp) >= 31 and f_resp[0] == 0x06:
+                d = list(f_resp)
+                # Byte 3 is exact raw battery % (1..100)
+                batt_pct = d[3] if (0 < d[3] <= 100) else (d[2] if 0 < d[2] <= 100 else (d[41] * 20 if len(d) >= 42 and 0 <= d[41] <= 5 else None))
+                charging = bool(d[30] in (0x01, 0x02, 0x03, 0x80))
+                if batt_pct is not None and 0 <= batt_pct <= 100:
+                    return batt_pct, charging
+        except OSError:
+            pass
+
+        # Step 3: Active write query fallback [0x09, 0x06, 0x00...] (Dock / Dongle active mode)
+        query = [0x09, 0x06, 0x00] + [0] * 61
+        try:
+            dev.write(bytes(query))
+        except OSError:
+            pass
+
+        time.sleep(0.04)
+        for _ in range(5):
+            try:
+                resp = dev.read(64)
+            except OSError:
+                resp = None
+
+            if resp and len(resp) >= 10:
+                d = list(resp)
+                if d[0] == 0x08:
+                    raw_val = d[3] if (0 < d[3] <= 100) else (d[2] if 0 < d[2] <= 100 else (d[9] * 20 if 0 <= d[9] <= 5 else None))
+                    charging = bool(d[3] in (0x02, 0x03, 0x80) or d[4] in (0x02, 0x03, 0x80))
+                    if raw_val is not None and 0 <= raw_val <= 100:
+                        return raw_val, charging
+            time.sleep(0.02)
+
         return None, None
     finally:
         try:
