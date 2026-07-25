@@ -134,6 +134,9 @@ class BatteryTrayApp:
     def open_repo_url(self, icon, item):
         webbrowser.open(GITHUB_REPO_URL)
 
+    def open_kofi_url(self, icon, item):
+        webbrowser.open("https://ko-fi.com/incconutwo")
+
     def on_check_updates_click(self, icon, item):
         self.check_for_updates(manual=True)
 
@@ -293,6 +296,7 @@ class BatteryTrayApp:
             
         items.append(pystray.Menu.SEPARATOR)
         items.append(pystray.MenuItem(f"Mouse Battery Tray {__version__}", self.open_repo_url))
+        items.append(pystray.MenuItem("Donate / Support", self.open_kofi_url))
         items.append(pystray.MenuItem("Exit", self.on_exit))
         return pystray.Menu(*items)
 

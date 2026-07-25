@@ -1,8 +1,16 @@
 # Mouse Battery Tray Indicator
 
+[![Platform](https://img.shields.io/badge/Platform-Windows_10_%7C_11-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/incconutwo/mouse-battery-tray)
+[![Release](https://img.shields.io/github/v/release/incconutwo/mouse-battery-tray?style=for-the-badge&color=28a745)](https://github.com/incconutwo/mouse-battery-tray/releases)
+[![Downloads](https://img.shields.io/github/downloads/incconutwo/mouse-battery-tray/total?style=for-the-badge&color=7952b3)](https://github.com/incconutwo/mouse-battery-tray/releases)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/incconutwo)
+
 <img src="https://github.com/user-attachments/assets/4e384838-6073-4457-827c-737c18f909f2" alt="Mouse Battery Tray Screenshot" width="150" align="right">
 
 A lightweight, standalone Windows system tray application that displays the live battery percentage of wireless gaming mice (Attack Shark, Pulsar, WLMouse Beast X family, Beken/CompX OEM, etc.) directly in the taskbar.
+
+[<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg> **Download Latest Release (MouseBatteryTray.exe)**](https://github.com/incconutwo/mouse-battery-tray/releases/latest)
 
 This tool serves as a lightweight alternative to resource-heavy official manufacturer hub software.
 
@@ -113,5 +121,3 @@ Special thanks to all community members who contributed device ID mappings and h
 - **[@nzeck1](https://github.com/nzeck1)** – Provided hardware ID dump for the **VXE R1 Series** (R1 / R1 SE / R1 SE+).
 - **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`, `PID 0x0300`).
 - **TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
-
-
