@@ -49,9 +49,11 @@ SUPPORTED_DEVICES = {
 
     # VXE R1 Series (R1 / SE / SE+) (Thanks to @nzeck1)
     (0x3554, 0xf58e): ("VXE R1 Series", "wireless"),
+    (0x3554, 0xf58a): ("VXE R1 Series", "wireless"),
     (0x320f, 0x5055): ("VXE R1 Series", "wireless"),
     (0x3537, 0x2106): ("VXE R1 Series", "wireless"),
     0xf58e: ("VXE R1 Series", "wireless"),
+    0xf58a: ("VXE R1 Series", "wireless"),
     0x5055: ("VXE R1 Series", "wireless"),
     0x2106: ("VXE R1 Series", "wireless"),
 
@@ -218,7 +220,7 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
 
             item = (d['path'], mode, model_name)
 
-            if if_num == 2 and usage_page == 10:
+            if (if_num == 2 and usage_page == 10) or usage_page == 0xff04:
                 p1_match = item
                 break  # Perfect match — no need to scan further
             elif (usage_page == 10 or usage_page >= 0xff00 or if_num == 2) and p2_match is None:

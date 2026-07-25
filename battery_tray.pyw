@@ -395,6 +395,7 @@ class BatteryTrayApp:
             
             last_recv_time = time.time()
             last_trim_time = time.time()
+            last_feat_time = 0
             while self.running:
                 if time.time() - last_trim_time > 60:
                     trim_memory()
@@ -414,6 +415,8 @@ class BatteryTrayApp:
                     self.current_model = model_check
                     last_recv_time = time.time()
                     
+                got_passive = False
+                read_failed = False
                 try:
                     data = dev.read(64)
                     if data:
@@ -453,9 +456,28 @@ class BatteryTrayApp:
                             if 0 <= battery <= 100:
                                 self.update_battery_level(battery, charging=is_dock_charging)
                                 last_recv_time = time.time()
-                    time.sleep(0.1)
+                                got_passive = True
                 except OSError:
+                    read_failed = True
+
+                # Feature report 0x06 query fallback for VXE / CompX NordicMouse devices
+                if not got_passive and (time.time() - last_feat_time >= 2.0):
+                    last_feat_time = time.time()
+                    try:
+                        f_data = dev.get_feature_report(0x06, 65)
+                        if f_data and len(f_data) >= 4 and f_data[0] == 0x06:
+                            is_dock_charging = bool(f_data[2])
+                            battery = f_data[3]
+                            if 0 <= battery <= 100:
+                                self.update_battery_level(battery, charging=is_dock_charging)
+                                last_recv_time = time.time()
+                    except Exception:
+                        pass
+
+                if read_failed and self.last_battery < 0 and (time.time() - last_recv_time > 10):
                     break
+
+                time.sleep(0.1)
                     
             dev.close()
         except OSError:
