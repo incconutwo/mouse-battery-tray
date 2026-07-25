@@ -24,7 +24,7 @@ The application officially recognizes the following models, with dynamic fallbac
 | :--- | :--- | :---: | :---: | :--- |
 | **WLMouse** | Beast X / Mini Pro | 🟢 | 🟢 | 8K Receiver (`VID 0x36a7`) |
 | **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
-| **Pulsar** | Xlite Wireless | 🟢 | 🟢 | CompX OEM |
+| **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
 | | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
 | **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
@@ -120,4 +120,6 @@ Special thanks to all community members who contributed device ID mappings and h
 - **[@CptNinja](https://github.com/CptNinja)** – Provided hardware ID dump for the **Pulsar 8K Dongle Gen.2** (`VID 0x3710`, `PID 0x5406`).
 - **[@nzeck1](https://github.com/nzeck1)** – Provided hardware ID dump for the **VXE R1 Series** (R1 / R1 SE / R1 SE+).
 - **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`, `PID 0x0300`).
-- **TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
+- **u/Monophonotronic** – Provided hardware ID dump for the **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`).
+- **u/djnemoson** – Provided hardware ID dump for the **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
+- **TwistedVincenzo** – Provided hardware ID dump for the **Pulsar Xlite Wireless**.

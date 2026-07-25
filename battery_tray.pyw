@@ -34,6 +34,8 @@ from devices import (
     find_device_path,
     find_wlmouse,
     read_wlmouse_battery,
+    find_razer,
+    read_razer_battery,
     BEKEN_DEVICE_NAMES,
 )
 from icon_drawer import get_icon_data
@@ -355,6 +357,18 @@ class BatteryTrayApp:
                     self.update_tray()
                 time.sleep(10)
                 continue
+
+            razer_path, razer_name, razer_pid = find_razer()
+            if razer_path:
+                self.current_model = razer_name
+                battery, charging = read_razer_battery(razer_path)
+                if battery is not None:
+                    self.update_battery_level(battery, bool(charging))
+                else:
+                    self.status = "unknown"
+                    self.update_tray()
+                time.sleep(10)
+                continue
                 
             if self.status != "disconnected":
                 self.status = "disconnected"
@@ -395,7 +409,7 @@ class BatteryTrayApp:
 
                 if time.time() - last_recv_time > 5:
                     path_check, mode_check, model_check = find_device_path()
-                    if not path_check or mode_check != "wireless":
+                    if not path_check or mode_check != "wireless" or path_check != path:
                         break
                     self.current_model = model_check
                     last_recv_time = time.time()
@@ -404,14 +418,17 @@ class BatteryTrayApp:
                     data = dev.read(64)
                     if data:
                         # Parse battery packet: [0x03, device_id, 0x40, sub_type, battery_val, ...]
-                        # device_id is model-specific (e.g. 0x55=X11, 0x10=R1, 0x85=X6, 0x4d=X3, 0xbe=X11 Pro, 0x07=X11 SE)
-                        if len(data) >= 5 and data[0] == 0x03 and data[2] == 0x40:
+                        # Broaden data[0] == 0x03 matching to support Incott/PixArt 8K receivers where data[2] != 0x40
+                        if len(data) >= 5 and data[0] == 0x03:
                             device_id = data[1]
                             is_beken = device_id in BEKEN_DEVICE_NAMES
                             if is_beken:
                                 self.current_model = BEKEN_DEVICE_NAMES[device_id]
                             
-                            raw_batt = data[4]
+                            if data[2] == 0x40:
+                                raw_batt = data[4]
+                            else:
+                                raw_batt = data[4] if 0 < data[4] <= 100 else data[2]
                             # Only apply 1-10 scale specifically to X6 (0x85) to avoid 
                             # normal mice jumping to 100% when they reach 10% battery!
                             if device_id == 0x85 and 0 < raw_batt <= 10:
