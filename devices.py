@@ -2,10 +2,13 @@ import time
 import hid
 from typing import Optional, Tuple, List
 
-# =============================================================================
-# Supported Standard Devices (Beken, CompX, Pulsar, etc.)
-# =============================================================================
-SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532}
+NON_MOUSE_KEYWORDS = [
+    'keyboard', 'microphone', 'audio', 'headset', 'sound',
+    'argb', 'chroma', 'controller', 'rgb', 'lighting', 'pad',
+    'mat', 'docking', 'stand', 'camera', 'stream', 'deck', 'keypad'
+]
+
+SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770}
 
 BEKEN_DEVICE_NAMES = {
     0x55: "Attack Shark X11",
@@ -64,12 +67,6 @@ SUPPORTED_DEVICES = {
     (0x093a, 0x622c): ("Incott G24 Pro", "wired"),
     0x522c: ("Incott G24 Pro", "wireless"),
     0x622c: ("Incott G24 Pro", "wired"),
-
-    # Razer HyperPolling / Mouse Series (Thanks to u/MarcBelmaati)
-    (0x1532, 0x00b3): ("Razer HyperPolling Dongle", "wireless"),
-    (0x1532, 0x00a5): ("Razer Mouse", "wired"),
-    0x00b3: ("Razer HyperPolling Dongle", "wireless"),
-    0x00a5: ("Razer Mouse", "wired"),
 }
 
 # =============================================================================
@@ -199,8 +196,8 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
         pid = d['product_id']
         if vid in SUPPORTED_VIDS:
             prod_string = str(d.get('product_string', '')).lower()
-            # Ignore keyboards, microphones, and audio peripherals sharing the same VID
-            if any(k in prod_string for k in ['keyboard', 'microphone', 'audio', 'headset', 'sound']):
+            # Ignore keyboards, ARGB controllers, audio, and non-mouse peripherals sharing the same VID
+            if any(k in prod_string for k in NON_MOUSE_KEYWORDS):
                 continue
 
             if_num = d.get('interface_number', -1)
@@ -278,6 +275,9 @@ def find_razer() -> Tuple[Optional[str], Optional[str], Optional[int]]:
     fallback = None
     for d in hid.enumerate(RAZER_VID):
         pid = d['product_id']
+        prod_string = str(d.get('product_string', '')).lower()
+        if any(k in prod_string for k in NON_MOUSE_KEYWORDS):
+            continue
         name = RAZER_DEVICES.get(pid) or d.get('product_string') or "Razer Device"
         usage_page = d.get('usage_page', 0)
         usage = d.get('usage', 0)
