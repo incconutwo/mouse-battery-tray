@@ -18,7 +18,7 @@ def get_mouse_devices():
             continue
             
         prod_lower = prod.lower()
-        is_relevant_brand = vid in [0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x046d, 0x1532]
+        is_relevant_brand = vid in [0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x046d, 0x1532, 0x3554, 0x320f, 0x3537, 0x3770]
         is_generic_input = any(term in prod_lower for term in ["mouse", "keyboard", "wireless", "receiver", "dongle", "usb", "hid"])
         
         if is_relevant_brand or is_generic_input:
