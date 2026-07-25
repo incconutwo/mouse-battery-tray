@@ -32,6 +32,8 @@ from updater import (
 )
 from devices import (
     find_device_path,
+    find_device_paths,
+    parse_battery_telemetry,
     find_wlmouse,
     read_wlmouse_battery,
     find_razer,
@@ -375,7 +377,7 @@ class BatteryTrayApp:
                 self.update_tray()
             time.sleep(5)
 
-    def _handle_standard_device(self, path: str, mode: str, model_name: str):
+    def _handle_standard_device(self, primary_path: str, mode: str, model_name: str):
         self.current_model = model_name
         if mode == "wired":
             if self.status != "charging":
@@ -383,90 +385,104 @@ class BatteryTrayApp:
                 self.update_tray()
             time.sleep(5)
             return
-            
+
+        # Discover all candidate endpoint paths for this mouse
+        candidate_tuples = find_device_paths()
+        candidate_paths = [t[0] for t in candidate_tuples]
+        if primary_path not in candidate_paths:
+            candidate_paths.insert(0, primary_path)
+
+        open_devices = []
+        for p in candidate_paths:
+            try:
+                dev = hid.device()
+                dev.open_path(p.encode('utf-8') if isinstance(p, str) else p)
+                dev.set_nonblocking(True)
+                open_devices.append((p, dev))
+            except OSError:
+                pass
+
+        if not open_devices:
+            self.status = "disconnected"
+            self.update_tray()
+            time.sleep(5)
+            return
+
         try:
-            dev = hid.device()
-            dev.open_path(path.encode('utf-8') if isinstance(path, str) else path)
-            dev.set_nonblocking(True)
-            
             if self.status in ("disconnected", "charging", "unknown"):
                 self.status = "connected"
                 self.update_tray()
-            
+
             last_recv_time = time.time()
             last_trim_time = time.time()
+            last_query_time = time.time() - 2.0  # Allow initial query after 1 second if passive reads fail
+
+            # Active feature query packets to send if passive reads remain silent
+            QUERY_PACKETS = [
+                [0x00, 0x03, 0x00, 0x00],
+                [0x00, 0x04, 0x00, 0x00],
+                [0x00, 0x83, 0x00, 0x00],
+                [0x03, 0x00, 0x00, 0x00],
+            ]
+
             while self.running:
-                if time.time() - last_trim_time > 60:
+                now = time.time()
+                if now - last_trim_time > 60:
                     trim_memory()
-                    last_trim_time = time.time()
+                    last_trim_time = now
 
                 if is_light_mode() != self.last_theme:
                     self.update_tray()
 
-                if time.time() - self.last_update_check_time >= 86400:
-                    self.last_update_check_time = time.time()
+                if now - self.last_update_check_time >= 86400:
+                    self.last_update_check_time = now
                     self.check_for_updates(manual=False)
 
-                if time.time() - last_recv_time > 5:
+                if now - last_recv_time > 5:
                     path_check, mode_check, model_check = find_device_path()
-                    if not path_check or mode_check != "wireless" or path_check != path:
+                    if not path_check or mode_check != "wireless" or path_check not in candidate_paths:
                         break
                     self.current_model = model_check
-                    last_recv_time = time.time()
-                    
-                try:
-                    data = dev.read(64)
-                    if data:
-                        # Parse battery packet: [0x03, device_id, 0x40, sub_type, battery_val, ...]
-                        # Broaden data[0] == 0x03 matching to support Incott/PixArt 8K receivers where data[2] != 0x40
-                        if len(data) >= 5 and data[0] == 0x03:
-                            device_id = data[1]
-                            is_beken = device_id in BEKEN_DEVICE_NAMES
-                            if is_beken:
-                                self.current_model = BEKEN_DEVICE_NAMES[device_id]
-                            
-                            if data[2] == 0x40:
-                                raw_batt = data[4]
-                            else:
-                                raw_batt = data[4] if 0 < data[4] <= 100 else data[2]
-                            # Only apply 1-10 scale specifically to X6 (0x85) to avoid 
-                            # normal mice jumping to 100% when they reach 10% battery!
-                            if device_id == 0x85 and 0 < raw_batt <= 10:
-                                battery = raw_batt * 10
-                            else:
-                                battery = raw_batt
-                            
-                            # Wireless / Dock Charging detection:
-                            # data[3] subtype: 0x01=discharge, 0x02/0x03/0x80=dock charging.
-                            # Bytes 5-7 non-zero flag check is Beken-specific — only apply for
-                            # confirmed Beken devices to avoid false Chg state on VXE/Hitscan.
-                            if is_beken:
-                                is_dock_charging = bool(
-                                    data[3] in (0x02, 0x03, 0x80) or
-                                    (len(data) >= 6 and data[5] != 0) or
-                                    (len(data) >= 7 and data[6] != 0) or
-                                    (len(data) >= 8 and data[7] != 0)
-                                )
-                            else:
-                                is_dock_charging = data[3] in (0x02, 0x03, 0x80)
-                            
-                            if 0 <= battery <= 100:
-                                self.update_battery_level(battery, charging=is_dock_charging)
-                                last_recv_time = time.time()
-                    time.sleep(0.1)
-                except OSError:
-                    break
-                    
-            dev.close()
-        except OSError:
-            self.status = "disconnected"
-            self.update_tray()
-            time.sleep(5)
+                    last_recv_time = now
+
+                got_packet = False
+                for p, dev in open_devices:
+                    try:
+                        data = dev.read(64)
+                        if data:
+                            d_list = list(data)
+                            dev_id = d_list[1] if len(d_list) > 1 else None
+                            if dev_id in BEKEN_DEVICE_NAMES:
+                                self.current_model = BEKEN_DEVICE_NAMES[dev_id]
+
+                            battery, is_charging = parse_battery_telemetry(d_list, dev_id)
+                            if battery is not None:
+                                self.update_battery_level(battery, charging=is_charging)
+                                last_recv_time = now
+                                got_packet = True
+                                break
+                    except OSError:
+                        pass
+
+                # If no valid battery telemetry has been received for > 3s, attempt feature query reports
+                if not got_packet and (self.last_battery < 0 or now - last_recv_time > 3.0) and (now - last_query_time >= 3.0):
+                    last_query_time = now
+                    for p, dev in open_devices:
+                        for q in QUERY_PACKETS:
+                            try:
+                                padded = q + [0x00] * (64 - len(q))
+                                dev.send_feature_report(bytes(padded))
+                            except Exception:
+                                pass
+
+                time.sleep(0.1)
+
         finally:
-            try:
-                dev.close()
-            except Exception:
-                pass
+            for p, dev in open_devices:
+                try:
+                    dev.close()
+                except Exception:
+                    pass
 
     def on_exit(self, icon, item):
         self.running = False

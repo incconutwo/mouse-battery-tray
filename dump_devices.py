@@ -110,6 +110,48 @@ def main():
             
     print("```")
     print("\nThank you for helping us improve the tool!")
+
+    # Step 3: Optional Live HID Packet Monitor
+    print("\n" + "=" * 65)
+    print("[OPTIONAL STEP 3: Live Telemetry Packet Sniffer]")
+    print("If your wireless mouse percentage is still not updating,")
+    print("this option will listen for 5 seconds to capture raw packets.")
+    ans = input("\nDo you want to run the 5-second Live Telemetry Sniffer? (y/N): ").strip().lower()
+    if ans == 'y':
+        print("\nMonitoring HID endpoints for 5 seconds... Move your mouse!")
+        endpoints = []
+        for d in hid.enumerate():
+            if d['vendor_id'] in [0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532]:
+                try:
+                    dev = hid.device()
+                    dev.open_path(d['path'])
+                    dev.set_nonblocking(True)
+                    endpoints.append((d, dev))
+                except Exception:
+                    pass
+        
+        deadline = time.time() + 5.0
+        captured = 0
+        while time.time() < deadline:
+            for info, dev in endpoints:
+                try:
+                    data = dev.read(64)
+                    if data:
+                        d_list = list(data)
+                        print(f"  [IF {info.get('interface_number', '?')} | UP 0x{info.get('usage_page', 0):04x}] "
+                              f"Report 0x{d_list[0]:02x} ({len(d_list)}B): {[f'0x{b:02x}' for b in d_list[:12]]}")
+                        captured += 1
+                except Exception:
+                    pass
+            time.sleep(0.05)
+        
+        for info, dev in endpoints:
+            try:
+                dev.close()
+            except Exception:
+                pass
+        print(f"\nSniffer complete. Captured {captured} raw packets.")
+
     input("\nPress Enter to exit...")
 
 if __name__ == "__main__":

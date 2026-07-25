@@ -187,12 +187,71 @@ def read_wlmouse_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
     return None, None
 
 
-def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Scan HID devices for standard supported mice with prioritized endpoint matching."""
-    p1_match = None  # Interface 2 + usage_page 10 (Best match for Attack Shark X11/X6/X3/R1)
-    p2_match = None  # usage_page 10 or >= 0xff00 or interface 2
-    p3_match = None  # interface 1
-    fallback = None  # any matching VID endpoint
+def parse_battery_telemetry(data: List[int], device_id: Optional[int] = None) -> Tuple[Optional[int], Optional[bool]]:
+    """
+    Parse battery percentage and dock charging state from standard/OEM/PixArt/Incott HID packets.
+    Returns (battery_pct, is_charging). Returns (None, None) if packet is not a valid telemetry report.
+    """
+    if not data or len(data) < 3:
+        return None, None
+
+    report_id = data[0]
+    # Standard and OEM wireless report IDs (0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x83, 0x84, 0xef)
+    VALID_REPORT_IDS = {0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x83, 0x84, 0xef}
+    if report_id not in VALID_REPORT_IDS:
+        return None, None
+
+    # Check for standard Beken / CompX packet format: [0x03, device_id, 0x40, sub_type, battery_val, ...]
+    if report_id == 0x03 and len(data) >= 5 and data[2] == 0x40:
+        raw_batt = data[4]
+        is_beken = device_id in BEKEN_DEVICE_NAMES if device_id is not None else False
+        
+        if device_id == 0x85 and 0 < raw_batt <= 10:
+            batt = raw_batt * 10
+        else:
+            batt = raw_batt
+
+        if is_beken:
+            is_charging = bool(
+                data[3] in (0x02, 0x03, 0x80) or
+                (len(data) >= 6 and data[5] != 0) or
+                (len(data) >= 7 and data[6] != 0) or
+                (len(data) >= 8 and data[7] != 0)
+            )
+        else:
+            is_charging = data[3] in (0x02, 0x03, 0x80)
+
+        if 0 <= batt <= 100:
+            return batt, is_charging
+
+    # Broadened packet parsing for Incott 8K / PixArt / VXE / CompX receivers
+    # Candidate indices in packet where battery percentage is placed
+    candidate_indices = [4, 2, 3, 5, 1, 6, 7]
+    for idx in candidate_indices:
+        if idx < len(data):
+            val = data[idx]
+            if 0 < val <= 100:
+                # Check for dock charging indicators in packet
+                sub_type = data[3] if len(data) > 3 else 0
+                is_charging = sub_type in (0x02, 0x03, 0x80)
+                
+                # Special Attack Shark X6 1-10 scaling override
+                if device_id == 0x85 and 0 < val <= 10:
+                    val = val * 10
+                return val, is_charging
+
+    return None, None
+
+
+def find_device_paths() -> List[Tuple[str, str, str]]:
+    """
+    Scan HID devices for standard supported mice and return ALL matching endpoint candidate tuples:
+    [(path, mode, model_name), ...], prioritized by best vendor endpoint match.
+    """
+    p1_matches = []  # Interface 2 + usage_page 10 (Best match for Attack Shark X11/X6/X3/R1)
+    p2_matches = []  # usage_page 10 or >= 0xff00 or interface 2
+    p3_matches = []  # interface 1 or 3
+    fallbacks = []   # any matching VID endpoint
 
     for d in hid.enumerate():
         vid = d['vendor_id']
@@ -216,28 +275,38 @@ def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
                 if model_name in ['2.4G Wireless Device', '2.4G Receiver']:
                     model_name = "Wireless Mouse"
 
+            # Dynamic override if cable is plugged in
+            if "wired" in prod_string:
+                mode = "wired"
+
             item = (d['path'], mode, model_name)
 
             if if_num == 2 and usage_page == 10:
-                p1_match = item
-                break  # Perfect match — no need to scan further
-            elif (usage_page == 10 or usage_page >= 0xff00 or if_num == 2) and p2_match is None:
-                p2_match = item
-            elif if_num == 1 and p3_match is None:
-                p3_match = item
-            elif fallback is None:
-                fallback = item
+                p1_matches.append(item)
+            elif usage_page == 10 or usage_page >= 0xff00 or if_num == 2:
+                p2_matches.append(item)
+            elif if_num in (1, 3):
+                p3_matches.append(item)
+            else:
+                fallbacks.append(item)
 
-        if p1_match:
-            break
+    # Return deduplicated candidate list in priority order
+    result = []
+    seen = set()
+    for item in (p1_matches + p2_matches + p3_matches + fallbacks):
+        path = item[0]
+        if path not in seen:
+            seen.add(path)
+            result.append(item)
 
-    if p1_match:
-        return p1_match
-    if p2_match:
-        return p2_match
-    if p3_match:
-        return p3_match
-    return fallback if fallback else (None, None, None)
+    return result
+
+
+def find_device_path() -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Return top prioritized (path, mode, model_name) or (None, None, None)."""
+    paths = find_device_paths()
+    return paths[0] if paths else (None, None, None)
+
 
 
 # =============================================================================
