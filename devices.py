@@ -68,9 +68,11 @@ SUPPORTED_DEVICES = {
     0x522c: ("Incott G24 Pro", "wireless"),
     0x622c: ("Incott G24 Pro", "wired"),
     # Turtle Beach / Roccat Kone XP Air
+    (0x10f5, 0x5015): ("Turtle Beach Kone XP Air", "wired"),
     (0x10f5, 0x5017): ("Turtle Beach Kone XP Air", "wireless"),
     (0x10f5, 0x5018): ("Turtle Beach Kone XP Air", "wired"),
     (0x10f5, 0x5019): ("Turtle Beach Kone XP Air Docking", "wireless"),
+    0x5015: ("Turtle Beach Kone XP Air", "wired"),
     0x5017: ("Turtle Beach Kone XP Air", "wireless"),
     0x5018: ("Turtle Beach Kone XP Air", "wired"),
     0x5019: ("Turtle Beach Kone XP Air Docking", "wireless"),
@@ -386,10 +388,11 @@ def find_turtlebeach() -> Tuple[Optional[str], Optional[str], Optional[int]]:
 def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
     """Active query for Turtle Beach / Roccat battery % and charging status.
     
-    Turtle Beach / Roccat Nordic-based mice (e.g., Kone XP Air) report remaining
-    battery in 5 discrete levels (0..5), mapping to 0%, 20%, 40%, 60%, 80%, 100%.
-    Feature Report 0x06 byte offset 41 contains the discrete battery level step,
-    and byte offset 30 indicates charging status.
+    Turtle Beach / Roccat Nordic-based mice (e.g., Kone XP Air) report raw battery %
+    and status in Feature Report 0x06:
+    - Byte 3 contains the exact 1% granular battery percentage.
+    - Byte 30 indicates charging status (0x01/0x02/0x03/0x80 = charging).
+    - Byte 41 contains a coarse 5-step level (0..5) used as fallback.
     """
     try:
         dev = hid.device()
@@ -407,17 +410,16 @@ def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
 
         time.sleep(0.03)
 
-        # Step 2: Query Feature Report 0x06 (byte 41 contains 5-step battery level 0..5)
+        # Step 2: Query Feature Report 0x06
         try:
             f_resp = dev.get_feature_report(0x06, 65)
-            if f_resp and len(f_resp) >= 42 and f_resp[0] == 0x06:
+            if f_resp and len(f_resp) >= 31 and f_resp[0] == 0x06:
                 d = list(f_resp)
-                raw_level = d[41]
+                # Byte 3 is exact raw battery % (1..100)
+                batt_pct = d[3] if (0 < d[3] <= 100) else (d[2] if 0 < d[2] <= 100 else (d[41] * 20 if len(d) >= 42 and 0 <= d[41] <= 5 else None))
                 charging = bool(d[30] in (0x01, 0x02, 0x03, 0x80))
-                if 0 <= raw_level <= 5:
-                    return raw_level * 20, charging
-                elif 0 <= raw_level <= 100:
-                    return raw_level, charging
+                if batt_pct is not None and 0 <= batt_pct <= 100:
+                    return batt_pct, charging
         except OSError:
             pass
 
@@ -438,11 +440,9 @@ def read_turtlebeach_battery(path: str) -> Tuple[Optional[int], Optional[bool]]:
             if resp and len(resp) >= 10:
                 d = list(resp)
                 if d[0] == 0x08:
-                    raw_val = d[9] if (0 <= d[9] <= 5) else d[2]
-                    charging = bool(d[3] in (0x02, 0x03, 0x80))
-                    if 0 <= raw_val <= 5:
-                        return raw_val * 20, charging
-                    elif 0 <= raw_val <= 100:
+                    raw_val = d[3] if (0 < d[3] <= 100) else (d[2] if 0 < d[2] <= 100 else (d[9] * 20 if 0 <= d[9] <= 5 else None))
+                    charging = bool(d[3] in (0x02, 0x03, 0x80) or d[4] in (0x02, 0x03, 0x80))
+                    if raw_val is not None and 0 <= raw_val <= 100:
                         return raw_val, charging
             time.sleep(0.02)
 
