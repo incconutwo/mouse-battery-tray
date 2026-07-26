@@ -27,13 +27,14 @@ The application officially recognizes the following models, with dynamic fallbac
 | | HyperPolling Dongle | 🟢 | 🟢 | Dongle (`PID 0x00b3`) |
 | **Attack Shark** | X11 / X6 / R1 / X3 / 8K Receiver | 🟢 | 🟢 | Dynamic Beken model resolution (`VID 0x1d57`) |
 | **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM (`VID 0x25a7`) |
-| | 8K Dongle Gen.2 & CrazyLight | 🟢 | 🟢 | 8K Receiver & Wired (`VID 0x3710`) |
-| **VXE** | R1 Series (R1 / SE / SE+ / Pro / Pro Max) | 🟢 | 🟢 | Dongles & Cable (`VID 0x3554`, `0x320f`) |
-| **Scyrox** | V6 8K | 🟢 | 🟢 | 8K Dongle (`VID 0x3554`) |
-| **Lamzu** | Maya X 8K | 🟢 | 🟢 | 8K Dongle (`VID 0x373e`) |
+| | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Receiver (`VID 0x3710`) |
+| | X2 & X2N CrazyLight | 🟢 | 🟢 | 8K Receiver & Wired (`VID 0x3710`) |
+| **VXE** | R1 Series (R1 / SE / SE+ / Pro / Pro Max) | 🟢 | 🟡 | Dongles (`VID 0x3554`, `0x320f`) |
+| **Scyrox** | V6 8K | 🟢 | 🟡 | 8K Dongle (`VID 0x3554`) |
+| **Lamzu** | Maya X 8K | 🟢 | 🟡 | 8K Dongle (`VID 0x373e`) |
 | **G-Wolves** | Fenrir Pro 8K / HTX Ultra 8K | 🟢 | 🟢 | 8K Dongle & Wired (`VID 0x33e4`) |
 | **MAMBASNAKE** | M5 Ultra | 🟢 | 🟢 | Dongle & Wired (`VID 0x373e`) |
-| **Hitscan** | Hyperlight (1K / 8K) | 🟢 | 🟢 | 8K Dongles (`VID 0x3770`, PIDs `0x0300`, `0x0200`) |
+| **Hitscan** | Hyperlight (1K / 8K) | 🟢 | 🟡 | 8K Dongles (`VID 0x3770`, PIDs `0x0300`, `0x0200`) |
 | **Cherry Xtrfy** | M68 Wireless | 🟢 | 🟢 | 1K Dongle & Cable (`VID 0x046a`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
 | **Generic** | Other Beken / CompX / WLMouse / Razer | 🟡 | 🟡 | Dynamic OEM fallback |

@@ -4,14 +4,32 @@ All notable changes to the Mouse Battery Tray project are documented in this fil
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.2.2] - 2026-07-25
+## [v1.2.2] - 2026-07-26
 
-### 🚀 New Device Support & Protocols
+### 🚀 New Device Support & Protocol Engines
 
-- **Razer Universal Wireless Support:** Added Razer mouse support (`VID 0x1532`) featuring OpenRazer 90-byte Feature Report active querying (`Class 0x07`, `Command 0x02` with XOR checksum calculation). Supports **Razer HyperPolling Wireless Dongle** (`PID 0x00b3`) and all modern wireless Razer mice out-of-the-box via dynamic PID fallback.
-- **Pulsar X2 Series:** Added mapping for **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
-- **Incott G24 Pro:** Added mapping for **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`) and broadened `0x03` battery report matching for PixArt 8K telemetry packets.
-- **VXE R1 Series Optimization:** Prioritized HID Endpoint 2 / Usage Page 10 for VXE R1, R1 SE, and R1 SE+ to resolve "Waiting for battery reading..." delays.
+- **FeikoWielsma Code Contribution & VXE R1 Pro/Max Support:** Full battery reading support for **VXE R1 Pro** and **VXE R1 Pro Max** (`VID 0x3554, PID 0xf58a` / `VID 0x320f, PID 0x5055`). Special credit and thanks to **FeikoWielsma** (from PR #6 / `mouse-battery-tray-feat-vxe-r1-pro-support`) for contributing the initial VXE R1 Pro mapping, `usage_page == 0xff04` endpoint prioritization, and Feature Report `0x06` fallback polling!
+- **Razer Universal Wireless & DeathAdder V3 Support:** Added Razer mouse support (`VID 0x1532`) featuring OpenRazer 90-byte Feature Report active querying (`Class 0x07`, `Command 0x02` with XOR checksum calculation). Supports **Razer DeathAdder V3** (`PID 0x00b2`), **Razer HyperPolling Wireless Dongle** (`PID 0x00b3`), and all modern wireless Razer mice out-of-the-box via dynamic PID fallback.
+- **Expanded Mouse Model Database:** Mapped hardware product IDs for 10 new mouse families:
+  - **Scyrox V6 8K** (`VID 0x3554, PID 0xf5f7`) - Thanks to u/SadPeppermint
+  - **Lamzu Maya X 8K** (`VID 0x373e, PID 0x001e`) - Thanks to u/kaklikesmilfs
+  - **G-Wolves Fenrir Pro 8K & HTX Ultra 8K** (`VID 0x33e4, PIDs 0x3854, 0x3619, 0x5617, 0x5608`) - Thanks to u/Kbphan & u/touholic
+  - **MAMBASNAKE M5 Ultra** (`VID 0x373e, PIDs 0x0050, 0x0051`) - Thanks to u/touholic
+  - **Pulsar X2 & X2N CrazyLight Series** (`VID 0x3710, PIDs 0x3414, 0x3510`) - Thanks to u/touholic & u/guadygood
+  - **Hitscan Hyperlight 1K & 8K** (`VID 0x3770, PIDs 0x0300, 0x0200`) - Thanks to @Vinsmok3 & @lilldizzy
+  - **Cherry Xtrfy M68 Wireless** (`VID 0x046a, PIDs 0x0330, 0x0334`) - Thanks to u/Truth_Lies & @kidguyperson
+  - **Attack Shark 8K Receiver** (`VID 0x1d57, PID 0xfa65`)
+  - **Pulsar X2 Series** (`VID 0x25a7, PIDs 0xfa7c, 0xfa7b`) - Thanks to u/djnemoson & TwistedVincenzo
+  - **Incott G24 Pro** (`VID 0x093a, PIDs 0x522c, 0x622c`) - Thanks to u/Monophonotronic
+
+### 🛠 Protocol Engine & Architectural Upgrades
+
+- **Multi-Endpoint Candidate Discovery:** Created `find_device_paths()` in `devices.py` to discover and open all candidate HID sub-interfaces simultaneously, resolving multi-endpoint 8K receiver delays.
+- **CompX / VXE Feature Report `0x06` Fallback Polling:** Implemented active Feature Report `0x06` querying and `get_feature_report` response polling on Windows feature-only endpoints when direct `dev.read()` returns an `OSError` *(code contributed by FeikoWielsma)*.
+- **Broadened Telemetry Parser with False-Positive Guard:** Added multi-index candidate byte checks (`4, 2, 3, 5, 1, 6, 7`) with a strict plausibility guard requiring `16% <= val <= 100%` and skipping `0x40` protocol marker bytes to prevent random false battery values.
+- **Dynamic Cable / Wired Mode Detection:** Dynamically switches tray status to **Charging / Wired** whenever `"wired"` is present in the USB product string.
+- **Razer Protocol Routing Fix:** Removed `RAZER_VID` (`0x1532`) from standard scanner lists to guarantee Razer devices route cleanly to `find_razer()` active OpenRazer querying without passive scanner interception.
+- **False Game Controller Mapping Cleanup:** Removed `0x3537:0x2106` (Zikway game controller) from `SUPPORTED_DEVICES` to prevent wireless controllers from falsely being identified as VXE mice.
 
 ### 🐛 Bug Fixes & Stability Improvements
 
@@ -19,14 +37,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Non-Mouse Peripheral Filter:** Added strict HID filtering in `devices.py` to ignore keyboards, microphones, and USB audio dongles sharing standard VIDs (e.g. `0x258a`), resolving false "Gaming Keyboard" detection.
 - **Auto-Switching on Receiver Re-plug:** Fixed polling loop to detect device path changes (`path_check != path`), allowing the app to seamlessly auto-switch when receivers are re-plugged or mice are reconnected.
 - **Attack Shark X6 Battery Scale Fix:** Restricted 10x battery scaling multiplier exclusively to X6 firmware (`device_id 0x85`), preventing standard mice from jumping to 100% when reaching 10% battery.
-- **False Dock Charging State (`Chg`) Guard:** Restricted non-zero byte checks to confirmed Beken devices to prevent movement packets from false-triggering `Chg` status on VXE / Hitscan mice.
 
-### 🎨 Documentation & UI
+### 🎨 Documentation & Community
 
-- **Tray Menu Clean-up:** Updated tray context menu item to clean text `"Donate / Support"`.
-- **README Enhancements:** Added modern Shields.io header badges (Platform, Release, Downloads, License, Ko-fi) and a direct Download button featuring a Lucide SVG download icon.
-- **Community Credits:** Added acknowledgments for **u/MarcBelmaati**, **u/Monophonotronic**, **u/djnemoson**, **@nzeck1**, **@Vinsmok3**, and community contributors.
-- **GitHub Sponsor Integration:** Created `.github/FUNDING.yml` for native GitHub sponsorship support.
+- **Community & PR Credits:** Added explicit credit to **FeikoWielsma** (PR #6), **u/Truth_Lies**, **@kidguyperson**, **@lilldizzy**, **u/SadPeppermint**, **u/kaklikesmilfs**, **u/Kbphan**, **u/touholic**, and **u/guadygood**.
+- **README Overhaul:** Updated `README.md` with complete 14+ model compatibility matrix and extended community acknowledgments.
 
 ---
 
