@@ -440,13 +440,36 @@ def run_simulation_tests():
     print(f" TEST RESULTS SUMMARY: {passed_count}/{len(TEST_DEVICE_MATRIX)} Passed")
     print("="*80 + "\n")
 
-    if failed_count == 0:
-        print("ALL PROTOCOL SIMULATIONS VERIFIED SUCCESSFULLY WITH 0 REGRESSIONS!")
-        return 0
-    else:
-        print(f"WARNING: {failed_count} TEST(S) FAILED!")
-        return 1
+    return failed_count
+
+def run_negative_edgecase_tests():
+    print("\n" + "-"*80)
+    print(" === RUNNING NEGATIVE EDGE-CASE TELEMETRY TESTS ===")
+    print("-"*80 + "\n")
+
+    negative_cases = [
+        # (packet, device_id, is_beken, description)
+        ([0x06, 0x10, 0x00, 0x00, 0x00], None, False, "VXE R1 SE Heartbeat with ID 0x10 at index 1"),
+        ([0x03, 0x10, 0x00, 0x02, 0x00], None, False, "CompX packet with Subtype 0x02 at index 3 and zero battery at index 4"),
+        ([0x06, 0x00, 0x00, 0x00, 0x00], None, False, "Generic report with 0 battery"),
+        ([0x02, 0x00], None, False, "Truncated short HID report (< 3 bytes)"),
+    ]
+
+    failed = 0
+    for idx, (pkt, dev_id, is_beken, desc) in enumerate(negative_cases, 1):
+        print(f"Edge Case #{idx:02d}: {desc:<65}", end="")
+        batt, charging = parse_battery_telemetry(pkt, dev_id, is_beken)
+        if batt is not None:
+            print(f"[FAILED]: Wrongly parsed battery {batt}% from non-telemetry packet!")
+            failed += 1
+        else:
+            print("[PASSED]")
+
+    return failed
 
 
 if __name__ == "__main__":
-    sys.exit(run_simulation_tests())
+    edge_failures = run_negative_edgecase_tests()
+    sim_failures = run_simulation_tests()
+    sys.exit(edge_failures + sim_failures)
+
