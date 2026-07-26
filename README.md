@@ -23,14 +23,19 @@ The application officially recognizes the following models, with dynamic fallbac
 | Brand | Model | 2.4G Wireless | Wired / Charging | Notes |
 | :--- | :--- | :---: | :---: | :--- |
 | **WLMouse** | Beast X / Mini Pro | 🟢 | 🟢 | 8K Receiver (`VID 0x36a7`) |
-| **Razer** | Universal Wireless Series | 🟢 | 🟢 | OpenRazer 90-Byte Query (`VID 0x1532`) |
+| **Razer** | Universal Wireless / DeathAdder V3 | 🟢 | 🟢 | OpenRazer 90-Byte Query (`VID 0x1532`) |
 | | HyperPolling Dongle | 🟢 | 🟢 | Dongle (`PID 0x00b3`) |
-| **Attack Shark** | X11 / X6 / R1 / X3 | 🟢 | 🟢 | Dynamic model resolution |
-| **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM |
-| | 8K Dongle Gen.2 | 🟢 | 🟡 | 8K Dongle (`VID 0x3710`) |
-| **VXE** | R1 Series (R1 / SE / SE+) | 🟢 | 🟢 | Dongles (`VID 0x3554`, `0x320f`, `0x3537`) |
+| **Attack Shark** | X11 / X6 / R1 / X3 / 8K Receiver | 🟢 | 🟢 | Dynamic Beken model resolution (`VID 0x1d57`) |
+| **Pulsar** | Xlite / X2 Series | 🟢 | 🟢 | CompX OEM (`VID 0x25a7`) |
+| | 8K Dongle Gen.2 & CrazyLight | 🟢 | 🟢 | 8K Receiver & Wired (`VID 0x3710`) |
+| **VXE** | R1 Series (R1 / SE / SE+ / Pro / Pro Max) | 🟢 | 🟢 | Dongles & Cable (`VID 0x3554`, `0x320f`) |
+| **Scyrox** | V6 8K | 🟢 | 🟢 | 8K Dongle (`VID 0x3554`) |
+| **Lamzu** | Maya X 8K | 🟢 | 🟢 | 8K Dongle (`VID 0x373e`) |
+| **G-Wolves** | Fenrir Pro 8K / HTX Ultra 8K | 🟢 | 🟢 | 8K Dongle & Wired (`VID 0x33e4`) |
+| **MAMBASNAKE** | M5 Ultra | 🟢 | 🟢 | Dongle & Wired (`VID 0x373e`) |
+| **Hitscan** | Hyperlight (1K / 8K) | 🟢 | 🟢 | 8K Dongles (`VID 0x3770`, PIDs `0x0300`, `0x0200`) |
+| **Cherry Xtrfy** | M68 Wireless | 🟢 | 🟢 | 1K Dongle & Cable (`VID 0x046a`) |
 | **Incott** | G24 Pro | 🟢 | 🟢 | PixArt 8K Dongle (`VID 0x093a`) |
-| **Hitscan** | Hyperlight | 🟢 | 🟡 | 8K Dongle (`VID 0x3770`) |
 | **Generic** | Other Beken / CompX / WLMouse / Razer | 🟡 | 🟡 | Dynamic OEM fallback |
 
 > **Status Key:** 🟢 Supported & Verified &nbsp;|&nbsp; 🟡 Auto-Detected / Untested
@@ -68,10 +73,11 @@ SUPPORTED_DEVICES = {
 - **Auto Taskbar Theme Detection:** Automatically adapts icon colors and contrast for Windows **Light Mode** and **Dark Mode** taskbars without extra configuration options.
 - **Intelligent Hours Estimate:** Real-time battery discharge slope tracking with minimalistic tooltip predictions (e.g., `Mouse: 85% (~12h)` or `42% (~4h 30m)`), complete with a menu toggle.
 - **Configurable Low Battery Alerts:** Sends a Windows toast notification when battery reaches your chosen threshold (25%, 20%, 15%, 10%, or Disabled).
+- **Multi-Endpoint Candidate Discovery & Active Queries:** Automatically binds all HID sub-interfaces simultaneously and sends active Feature Report queries (including CompX/VXE Report `0x06`) for 8K receivers and silent feature-only endpoints.
 - **Update Checker:** Asynchronously checks for new releases on GitHub directly from the right-click tray menu (`Check for Updates`).
 - **Clean Connection & Charging States:** Displays **`Chg`** (blue) while charging, **`--`** (grey) while awaiting initial reading, and **`??`** when disconnected.
 - **Start with Windows Toggle:** Right-click the icon to toggle startup behavior. It writes directly to your user registry (`HKCU`), requiring **zero Administrator (UAC) prompts**.
-- **Multi-Brand Compatibility:** Supports Razer (`VID: 0x1532`), Beken-OEM firmware (`VID: 0x1d57`), CompX/Pulsar (`VID: 0x25a7`, `0x3710`), PixArt (`VID: 0x093a`), and WLMouse (`VID: 0x36a7`).
+- **Multi-Brand Compatibility:** Supports Razer (`VID: 0x1532`), Beken-OEM firmware (`VID: 0x1d57`), CompX/Pulsar (`VID: 0x25a7`, `0x3710`), PixArt (`VID: 0x093a`), VXE/CompX (`VID: 0x3554`, `0x320f`), Cherry Xtrfy (`VID: 0x046a`), G-Wolves (`VID: 0x33e4`), Lamzu/Mambasnake (`VID: 0x373e`), Hitscan (`VID: 0x3770`), and WLMouse (`VID: 0x36a7`).
 
 
 ---
@@ -115,13 +121,22 @@ pip install hidapi pystray pillow
 
 ## Acknowledgments & Credits
 
-Special thanks to all community members who contributed device ID mappings and hardware dumps *(if I accidentally missed your name, please open an issue or reply so I can add you!)*:
+Special thanks to all community members who contributed device ID mappings, testing, pull requests, and hardware dumps *(if I accidentally missed your name, please open an issue or reply so I can add you!)*:
 
 - **[@len0c](https://github.com/len0c)** – Reverse-engineered HID protocol handling and initial integration for the **WLMouse Beast X** series.
+- **[@FeikoWielsma](https://github.com/FeikoWielsma)** – Contributed Pull Request #6 for **VXE R1 Pro** support & feature report `0x06` fallback polling.
 - **[@HarukaYamamoto0](https://github.com/HarukaYamamoto0)** – Shared additional Beken OEM model device ID mappings ([attack-shark-x11-driver](https://github.com/HarukaYamamoto0/attack-shark-x11-driver)).
 - **[@CptNinja](https://github.com/CptNinja)** – Provided hardware ID dump for the **Pulsar 8K Dongle Gen.2** (`VID 0x3710`, `PID 0x5406`).
 - **[@nzeck1](https://github.com/nzeck1)** – Provided hardware ID dump for the **VXE R1 Series** (R1 / R1 SE / R1 SE+).
-- **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`, `PID 0x0300`).
+- **[@kidguyperson](https://github.com/kidguyperson)** – Provided hardware ID dump for the **VXE R1 Pro Max** (`VID 0x3554`, `PID 0xf58a`).
+- **[@lilldizzy](https://github.com/lilldizzy)** – Reported & verified **Hitscan Hyperlight** (`PID 0x0200`) battery reading support.
+- **[@Vinsmok3](https://github.com/Vinsmok3)** – Provided hardware ID dump for the **Hitscan Hyperlight** (`VID 0x3770`).
+- **u/Truth_Lies** – Provided hardware ID dumps for **VXE R1 Pro** and **Cherry Xtrfy M68 Wireless**.
+- **u/SadPeppermint** – Provided hardware ID dump for the **Scyrox V6 8K** (`VID 0x3554`, `PID 0xf5f7`).
+- **u/kaklikesmilfs** – Provided hardware ID dump for the **Lamzu Maya X 8K** (`VID 0x373e`, `PID 0x001e`).
+- **u/Kbphan** – Provided hardware ID dump for the **G-Wolves Fenrir Pro 8K** (`VID 0x33e4`, `PID 0x3854` / `0x3619`).
+- **u/touholic** – Provided hardware ID dumps for **G-Wolves HTX Ultra 8K**, **MAMBASNAKE M5 Ultra**, and **Pulsar CrazyLight**.
+- **u/guadygood** – Provided hardware ID dump for **Pulsar CrazyLight Series**.
 - **u/Monophonotronic** – Provided hardware ID dump for the **Incott G24 Pro** (`VID 0x093a`, `PID 0x522c` / `0x622c`).
 - **u/djnemoson** – Provided hardware ID dump for the **Pulsar X2 Wireless** (`VID 0x25a7`, `PID 0xfa7c` / `0xfa7b`).
 - **u/MarcBelmaati** – Provided hardware ID dump for the **Razer Wireless / HyperPolling Dongle** (`VID 0x1532`, `PID 0x00b3` / `0x00a5`).

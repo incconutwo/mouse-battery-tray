@@ -5,7 +5,7 @@ from typing import Optional, Tuple, List
 # =============================================================================
 # Supported Standard Devices (Beken, CompX, Pulsar, etc.)
 # =============================================================================
-SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x1532}
+SUPPORTED_VIDS = {0x1d57, 0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x373e, 0x33e4, 0x046a}
 
 BEKEN_DEVICE_NAMES = {
     0x55: "Attack Shark X11",
@@ -20,8 +20,10 @@ SUPPORTED_DEVICES = {
     # Attack Shark Series (Dynamic Device ID via packet)
     (0x1d57, 0xfa60): ("Attack Shark Mouse", "wireless"),
     (0x1d57, 0xfa55): ("Attack Shark X11", "wired"),
+    (0x1d57, 0xfa65): ("Attack Shark 8K Receiver", "wireless"),
     0xfa60: ("Attack Shark Mouse", "wireless"),
     0xfa55: ("Attack Shark X11", "wired"),
+    0xfa65: ("Attack Shark 8K Receiver", "wireless"),
     
     # Attack Shark R1
     (0x1d57, 0xfa61): ("Attack Shark R1", "wired"),
@@ -43,33 +45,63 @@ SUPPORTED_DEVICES = {
     0xfa7c: ("Pulsar X2 / Xlite Series", "wireless"),
     0xfa7b: ("Pulsar X2 / Xlite Series", "wired"),
 
-    # Pulsar 8K Dongle Gen.2 (Thanks to @CptNinja)
+    # Pulsar 8K Dongle Gen.2 & CrazyLight Series (Thanks to @CptNinja, u/touholic, u/guadygood)
     (0x3710, 0x5406): ("Pulsar 8K Dongle Gen.2", "wireless"),
+    (0x3710, 0x3414): ("Pulsar X2 CrazyLight", "wired"),
+    (0x3710, 0x3510): ("Pulsar X2N CrazyLight", "wired"),
     0x5406: ("Pulsar 8K Dongle Gen.2", "wireless"),
+    0x3414: ("Pulsar X2 CrazyLight", "wired"),
+    0x3510: ("Pulsar X2N CrazyLight", "wired"),
 
-    # VXE R1 Series (R1 / SE / SE+) (Thanks to @nzeck1)
+    # VXE R1 Series (R1 / SE / SE+ / Pro / Pro Max) (Thanks to @nzeck1 & community)
     (0x3554, 0xf58e): ("VXE R1 Series", "wireless"),
+    (0x3554, 0xf58a): ("VXE R1 Pro / Pro Max", "wireless"),
     (0x320f, 0x5055): ("VXE R1 Series", "wireless"),
-    (0x3537, 0x2106): ("VXE R1 Series", "wireless"),
     0xf58e: ("VXE R1 Series", "wireless"),
+    0xf58a: ("VXE R1 Pro / Pro Max", "wireless"),
     0x5055: ("VXE R1 Series", "wireless"),
-    0x2106: ("VXE R1 Series", "wireless"),
 
-    # Hitscan Hyperlight (Thanks to @Vinsmok3)
+    # Scyrox V6 (Thanks to u/SadPeppermint)
+    (0x3554, 0xf5f7): ("Scyrox V6 8K", "wireless"),
+    0xf5f7: ("Scyrox V6 8K", "wireless"),
+
+    # Lamzu Maya X (Thanks to u/kaklikesmilfs)
+    (0x373e, 0x001e): ("Lamzu Maya X 8K", "wireless"),
+    0x001e: ("Lamzu Maya X 8K", "wireless"),
+
+    # G-Wolves Series (Fenrir Pro / HTX Ultra) (Thanks to u/Kbphan & u/touholic)
+    (0x33e4, 0x3854): ("G-Wolves Fenrir Pro 8K", "wireless"),
+    (0x33e4, 0x3619): ("G-Wolves Fenrir Pro 8K", "wired"),
+    (0x33e4, 0x5617): ("G-Wolves HTX Ultra 8K", "wireless"),
+    (0x33e4, 0x5608): ("G-Wolves HTX Ultra 8K", "wired"),
+    0x3854: ("G-Wolves Fenrir Pro 8K", "wireless"),
+    0x3619: ("G-Wolves Fenrir Pro 8K", "wired"),
+    0x5617: ("G-Wolves HTX Ultra 8K", "wireless"),
+    0x5608: ("G-Wolves HTX Ultra 8K", "wired"),
+
+    # MAMBASNAKE M5 Ultra (Thanks to u/touholic)
+    (0x373e, 0x0050): ("Mambasnake M5 Ultra", "wireless"),
+    (0x373e, 0x0051): ("Mambasnake M5 Ultra", "wired"),
+    0x0050: ("Mambasnake M5 Ultra", "wireless"),
+    0x0051: ("Mambasnake M5 Ultra", "wired"),
+
+    # Hitscan Hyperlight (Thanks to @Vinsmok3 & community)
     (0x3770, 0x0300): ("Hitscan Hyperlight", "wireless"),
+    (0x3770, 0x0200): ("Hitscan Hyperlight", "wireless"),
     0x0300: ("Hitscan Hyperlight", "wireless"),
+    0x0200: ("Hitscan Hyperlight", "wireless"),
+
+    # Cherry Xtrfy M68 Wireless (Thanks to community dump)
+    (0x046a, 0x0330): ("Cherry Xtrfy M68 Wireless", "wireless"),
+    (0x046a, 0x0334): ("Cherry Xtrfy M68 Wireless", "wired"),
+    0x0330: ("Cherry Xtrfy M68 Wireless", "wireless"),
+    0x0334: ("Cherry Xtrfy M68 Wireless", "wired"),
 
     # Incott G24 Pro (Thanks to u/Monophonotronic)
     (0x093a, 0x522c): ("Incott G24 Pro", "wireless"),
     (0x093a, 0x622c): ("Incott G24 Pro", "wired"),
     0x522c: ("Incott G24 Pro", "wireless"),
     0x622c: ("Incott G24 Pro", "wired"),
-
-    # Razer HyperPolling / Mouse Series (Thanks to u/MarcBelmaati)
-    (0x1532, 0x00b3): ("Razer HyperPolling Dongle", "wireless"),
-    (0x1532, 0x00a5): ("Razer Mouse", "wired"),
-    0x00b3: ("Razer HyperPolling Dongle", "wireless"),
-    0x00a5: ("Razer Mouse", "wired"),
 }
 
 # =============================================================================
@@ -230,11 +262,12 @@ def parse_battery_telemetry(data: List[int], device_id: Optional[int] = None) ->
     for idx in candidate_indices:
         if idx < len(data):
             val = data[idx]
-            if 0 < val <= 100:
+            # Skip protocol marker bytes and require a realistic battery range (10-100%)
+            if 0x10 <= val <= 100 and val != 0x40:
                 # Check for dock charging indicators in packet
                 sub_type = data[3] if len(data) > 3 else 0
                 is_charging = sub_type in (0x02, 0x03, 0x80)
-                
+
                 # Special Attack Shark X6 1-10 scaling override
                 if device_id == 0x85 and 0 < val <= 10:
                     val = val * 10
@@ -281,9 +314,9 @@ def find_device_paths() -> List[Tuple[str, str, str]]:
 
             item = (d['path'], mode, model_name)
 
-            if if_num == 2 and usage_page == 10:
+            if (if_num == 2 and usage_page == 10) or usage_page in (10, 0xff04):
                 p1_matches.append(item)
-            elif usage_page == 10 or usage_page >= 0xff00 or if_num == 2:
+            elif usage_page >= 0xff00 or if_num == 2:
                 p2_matches.append(item)
             elif if_num in (1, 3):
                 p3_matches.append(item)
@@ -316,6 +349,7 @@ RAZER_VID = 0x1532
 
 RAZER_DEVICES = {
     0x00b3: "Razer HyperPolling Dongle",
+    0x00b2: "Razer DeathAdder V3",
     0x00a5: "Razer Mouse",
 }
 

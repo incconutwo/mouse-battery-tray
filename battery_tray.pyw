@@ -419,6 +419,8 @@ class BatteryTrayApp:
 
             # Active feature query packets to send if passive reads remain silent
             QUERY_PACKETS = [
+                [0x00, 0x06, 0x00, 0x00],
+                [0x06, 0x00, 0x00, 0x00],
                 [0x00, 0x03, 0x00, 0x00],
                 [0x00, 0x04, 0x00, 0x00],
                 [0x00, 0x83, 0x00, 0x00],
@@ -468,12 +470,32 @@ class BatteryTrayApp:
                 if not got_packet and (self.last_battery < 0 or now - last_recv_time > 3.0) and (now - last_query_time >= 3.0):
                     last_query_time = now
                     for p, dev in open_devices:
+                        if got_packet:
+                            break
                         for q in QUERY_PACKETS:
                             try:
                                 padded = q + [0x00] * (64 - len(q))
                                 dev.send_feature_report(bytes(padded))
                             except Exception:
                                 pass
+
+                            # Poll get_feature_report for CompX / VXE NordicMouse feature-only endpoints
+                            for r_id in (0, 6, 3, 4):
+                                try:
+                                    resp = dev.get_feature_report(r_id, 64)
+                                    if resp:
+                                        d_list = list(resp)
+                                        dev_id = d_list[1] if len(d_list) > 1 else None
+                                        battery, is_charging = parse_battery_telemetry(d_list, dev_id)
+                                        if battery is not None:
+                                            self.update_battery_level(battery, charging=is_charging)
+                                            last_recv_time = now
+                                            got_packet = True
+                                            break
+                                except Exception:
+                                    pass
+                            if got_packet:
+                                break
 
                 time.sleep(0.1)
 
