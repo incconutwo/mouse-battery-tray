@@ -27,6 +27,10 @@ class MockApp:
         self.last_battery = battery
         self.status = "charging" if charging else "connected"
 
+    def update_device_state(self, path: str, model_name: str, battery: int, charging: bool = False, activity: bool = False):
+        self.current_model = model_name
+        self.update_battery_level(battery, charging)
+
     def check_for_updates(self, manual=False):
         pass
 
@@ -225,12 +229,16 @@ TEST_DEVICE_MATRIX = [
         "expected_model": "Razer DeathAdder V3",
         "expected_mode": "wireless",
         "expected_protocol": "RazerProtocol",
+        # Correct interface: usage_page=0x0001, usage=0x0006 (keyboard-control) scores highest
         "enum_dicts": [{
             "vendor_id": 0x1532, "product_id": 0x00b2, "product_string": "Razer DeathAdder V3",
-            "usage_page": 0xff00, "usage": 0x01, "path": "\\\\?\\hid#vid_1532&pid_00b2#001"
+            "usage_page": 0x0001, "usage": 0x0006, "interface_number": 3,
+            "path": "\\\\?\\hid#vid_1532&pid_00b2#001"
         }],
         "read_packets": [],
-        "feature_replies": {0: [0x00, 0x02, 0x1f, 0x00, 0x03, 0x07, 0x02, 0x00, 65, 0x00] + [0]*80},
+        # Correct 90-byte response layout:
+        # [0]=status(0x02=ok), [1]=tx_id, [2..4]=reserved, [5]=data_size, [6]=class(0x07), [7]=cmd(0x02), [8]=battery(65), [9]=charging(0)
+        "feature_replies": {0: [0x02, 0x1f, 0x00, 0x00, 0x00, 0x02, 0x07, 0x02, 65, 0x00] + [0]*80},
         "expected_batt": 65
     },
     {
@@ -239,12 +247,14 @@ TEST_DEVICE_MATRIX = [
         "expected_mode": "wireless",
         "expected_protocol": "RazerProtocol",
         "enum_dicts": [{
-            "vendor_id": 0x1532, "product_id": 0x00b3, "product_string": "Razer Dongle",
-            "usage_page": 0xff00, "usage": 0x01, "path": "\\\\?\\hid#vid_1532&pid_00b3#001"
+            "vendor_id": 0x1532, "product_id": 0x00b3, "product_string": "Razer HyperPolling Dongle",
+            "usage_page": 0x0001, "usage": 0x0006, "interface_number": 3,
+            "path": "\\\\?\\hid#vid_1532&pid_00b3#001"
         }],
         "read_packets": [],
-        "feature_replies": {0: [0x00, 0x02, 0x1f, 0x00, 0x03, 0x07, 0x02, 0x00, 100, 0x00] + [0]*80},
-        "expected_batt": 100
+        "feature_replies": {0: [0x02, 0x1f, 0x00, 0x00, 0x00, 0x02, 0x07, 0x02, 204, 0x00] + [0]*80},
+        # 204/255 * 100 = 80%
+        "expected_batt": 80
     },
 
     # ---------------------------------------------------------
@@ -405,7 +415,14 @@ def run_simulation_tests():
                     orig_update_batt(batt, charging)
                     mock_app.running = False
 
+                orig_update_tray = mock_app.update_tray
+                def wrap_update_tray():
+                    orig_update_tray()
+                    if mock_app.status == "charging":
+                        mock_app.running = False
+
                 mock_app.update_battery_level = wrap_update_batt
+                mock_app.update_tray = wrap_update_tray
 
                 try:
                     matched_handler.handle_device(mock_app, found_path, found_mode, found_model)
@@ -465,6 +482,32 @@ def run_negative_edgecase_tests():
             failed += 1
         else:
             print("[PASSED]")
+
+    # Additional strict-mode VID tests (require vid= argument)
+    strict_cases = [
+        # Incott polling-rate config packet: 0x03 report, data[2] != 0x40 → no 0x40 marker → strict VID should reject
+        ([0x03, 0x00, 0x01, 0x00, 33, 0x00], None, False, 0x093a, "Incott polling-rate config (vid=0x093a, strict-mode should reject)"),
+        # G-Wolves input report with plausible byte at index 4 but no 0x40 marker → non-strict VID still passes through generic scan
+        ([0x03, 0x00, 0x00, 0x00, 48, 0x00], None, False, 0x33e4, "G-Wolves ambient packet passes through generic scan (vid=0x33e4)"),
+    ]
+    print()
+    for idx, (pkt, dev_id, is_beken, vid, desc) in enumerate(strict_cases, len(negative_cases) + 1):
+        print(f"Edge Case #{idx:02d}: {desc:<65}", end="")
+        batt, charging = parse_battery_telemetry(pkt, dev_id, is_beken, vid=vid)
+        # Incott case: strict-mode MUST reject
+        if vid == 0x093a:
+            if batt is not None:
+                print(f"[FAILED]: Strict-mode VID 0x093a failed to block polling-rate packet (got {batt}%)")
+                failed += 1
+            else:
+                print("[PASSED]")
+        # G-Wolves case: generic scan should accept this as a valid-looking packet
+        elif vid == 0x33e4:
+            if batt is None:
+                print("[FAILED]: Generic scan rejected valid G-Wolves ambient packet")
+                failed += 1
+            else:
+                print("[PASSED]")
 
     return failed
 

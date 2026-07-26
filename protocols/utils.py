@@ -1,7 +1,25 @@
 from typing import Optional, Tuple, List
 
-def parse_battery_telemetry(data: List[int], device_id: Optional[int] = None, is_beken: bool = False) -> Tuple[Optional[int], Optional[bool]]:
-    """Shared telemetry parser for standard packets"""
+# VIDs whose devices are known to send config/polling-rate packets that mimic battery packets.
+# For these VIDs, we only trust the canonical 0x03/0x40 telemetry packet structure.
+STRICT_TELEMETRY_VIDS = {
+    0x093a,  # Incott / PixArt — config packets have polling rate at idx 4, misread as battery
+}
+
+def parse_battery_telemetry(
+    data: List[int],
+    device_id: Optional[int] = None,
+    is_beken: bool = False,
+    vid: Optional[int] = None,
+) -> Tuple[Optional[int], Optional[bool]]:
+    """Shared telemetry parser for standard packets.
+    
+    Args:
+        data: Raw HID packet bytes.
+        device_id: Byte at data[1], used for device-specific scaling.
+        is_beken: True for Beken OEM devices (different charging detection).
+        vid: Vendor ID — enables per-vendor strict-mode filtering.
+    """
     if not data or len(data) < 3:
         return None, None
 
@@ -10,6 +28,7 @@ def parse_battery_telemetry(data: List[int], device_id: Optional[int] = None, is
     if report_id not in VALID_REPORT_IDS:
         return None, None
 
+    # --- Canonical 0x03/0x40 telemetry packet (highest confidence) ---
     if report_id == 0x03 and len(data) >= 5 and data[2] == 0x40:
         raw_batt = data[4]
         
@@ -31,8 +50,14 @@ def parse_battery_telemetry(data: List[int], device_id: Optional[int] = None, is
         if 0 <= batt <= 100:
             return batt, is_charging
 
-    # Index 1 is typically the device ID. Index 3 is typically charging status.
-    # We remove them from candidates to prevent false positive battery readings (like 0x10 Dev ID being read as 16%).
+    # For VIDs known to send ambiguous config packets, bail out after the canonical check.
+    # This prevents polling-rate bytes from being misread as battery level.
+    if vid in STRICT_TELEMETRY_VIDS:
+        return None, None
+
+    # --- Generic fallback scan ---
+    # Index 1 is typically the device ID. Index 3 is typically charging/subtype status.
+    # We remove them from candidates to prevent false positive battery readings (like 0x10 Dev ID = 16%).
     candidate_indices = [4, 2, 5, 6, 7]
     for idx in candidate_indices:
         if idx < len(data):

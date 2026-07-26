@@ -1,10 +1,13 @@
+import re
 import time
 import hid
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from .base import ProtocolHandler, find_hid_device_paths
 from .utils import parse_battery_telemetry
 
-COMPX_VIDS = {0x25a7, 0x3710, 0x258a, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x373e, 0x33e4, 0x046a}
+COMPX_VIDS = {0x25a7, 0x3710, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x373e, 0x33e4, 0x046a}
+# 0x258a (BY Tech) is intentionally excluded from COMPX_VIDS — it is shared with keyboards.
+# Only specific BY Tech mouse PIDs are added as full VID+PID tuples below.
 
 COMPX_DEVICES = {
     # Pulsar Xlite / X2 Series
@@ -73,18 +76,31 @@ COMPX_DEVICES = {
 }
 
 class CompxProtocol(ProtocolHandler):
+    def find_all_devices(self) -> List[Tuple[str, str, str]]:
+        return find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
+
     def find_device(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        paths = find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
+        paths = self.find_all_devices()
         return paths[0] if paths else (None, None, None)
 
     def handle_device(self, app, primary_path: str, mode: str, model_name: str) -> None:
         app.current_model = model_name
         if mode == "wired":
-            if app.status != "charging":
-                app.status = "charging"
-                app.update_tray()
+            app.update_device_state(primary_path, model_name, -1, charging=True, activity=False)
             time.sleep(5)
             return
+
+        # Determine the VID for this path so we can pass it to the parser for strict-mode filtering
+        path_vid: Optional[int] = None
+        for d in hid.enumerate():
+            if d['path'] == primary_path or (isinstance(primary_path, bytes) and d['path'] == primary_path.decode('utf-8', errors='replace')):
+                path_vid = d['vendor_id']
+                break
+        if path_vid is None:
+            # Fall back: extract VID from path string (common Windows HID path contains vid_XXXX)
+            m = re.search(r'vid_([0-9a-f]{4})', primary_path.lower() if isinstance(primary_path, str) else primary_path.decode('utf-8', errors='replace').lower())
+            if m:
+                path_vid = int(m.group(1), 16)
 
         candidate_tuples = find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
         candidate_paths = [t[0] for t in candidate_tuples]
@@ -116,6 +132,13 @@ class CompxProtocol(ProtocolHandler):
             [0x03, 0x00, 0x00, 0x00],
         ]
 
+        # Hysteresis: require a reading to appear twice (within HYSTERESIS_WINDOW seconds)
+        # before committing it. Prevents G-Wolves flickering from stray input reports.
+        HYSTERESIS_WINDOW = 2.0
+        pending_batt: Optional[int] = None
+        pending_charging: Optional[bool] = None
+        pending_time: float = 0.0
+
         try:
             if app.status in ("disconnected", "charging", "unknown"):
                 app.status = "connected"
@@ -141,9 +164,16 @@ class CompxProtocol(ProtocolHandler):
                         if data:
                             d_list = list(data)
                             dev_id = d_list[1] if len(d_list) > 1 else None
-                            battery, is_charging = parse_battery_telemetry(d_list, dev_id, is_beken=False)
+                            battery, is_charging = parse_battery_telemetry(d_list, dev_id, is_beken=False, vid=path_vid)
                             if battery is not None:
-                                app.update_battery_level(battery, charging=is_charging)
+                                # Hysteresis gate: only commit if same reading within window
+                                if pending_batt is not None and abs(battery - pending_batt) <= 3 and (now - pending_time) < HYSTERESIS_WINDOW:
+                                    app.update_device_state(primary_path, model_name, battery, charging=is_charging, activity=True)
+                                    pending_batt = None
+                                else:
+                                    pending_batt = battery
+                                    pending_charging = is_charging
+                                    pending_time = now
                                 last_recv_time = now
                                 got_packet = True
                                 break
@@ -168,9 +198,9 @@ class CompxProtocol(ProtocolHandler):
                                     if resp:
                                         d_list = list(resp)
                                         dev_id = d_list[1] if len(d_list) > 1 else None
-                                        battery, is_charging = parse_battery_telemetry(d_list, dev_id, is_beken=False)
+                                        battery, is_charging = parse_battery_telemetry(d_list, dev_id, is_beken=False, vid=path_vid)
                                         if battery is not None:
-                                            app.update_battery_level(battery, charging=is_charging)
+                                            app.update_device_state(primary_path, model_name, battery, charging=is_charging, activity=False)
                                             last_recv_time = now
                                             got_packet = True
                                             break
@@ -187,3 +217,4 @@ class CompxProtocol(ProtocolHandler):
                     dev.close()
                 except Exception:
                     pass
+
