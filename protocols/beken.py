@@ -1,7 +1,7 @@
 import time
 import hid
-from typing import Optional, Tuple
-from .base import ProtocolHandler, find_hid_device_paths
+from typing import Optional, Tuple, List
+from .base import ProtocolHandler, find_hid_device_paths, get_candidate_paths_for_device
 from .utils import parse_battery_telemetry
 
 BEKEN_VIDS = {0x1d57}
@@ -36,8 +36,11 @@ BEKEN_DEVICES = {
 }
 
 class BekenProtocol(ProtocolHandler):
+    def find_all_devices(self) -> List[Tuple[str, str, str]]:
+        return find_hid_device_paths(BEKEN_VIDS, BEKEN_DEVICES)
+
     def find_device(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-        paths = find_hid_device_paths(BEKEN_VIDS, BEKEN_DEVICES)
+        paths = self.find_all_devices()
         return paths[0] if paths else (None, None, None)
 
     def handle_device(self, app, primary_path: str, mode: str, model_name: str) -> None:
@@ -49,10 +52,7 @@ class BekenProtocol(ProtocolHandler):
             time.sleep(5)
             return
 
-        candidate_tuples = find_hid_device_paths(BEKEN_VIDS, BEKEN_DEVICES)
-        candidate_paths = [t[0] for t in candidate_tuples]
-        if primary_path not in candidate_paths:
-            candidate_paths.insert(0, primary_path)
+        candidate_paths = get_candidate_paths_for_device(primary_path, BEKEN_VIDS)
 
         open_devices = []
         for p in candidate_paths:
@@ -82,9 +82,9 @@ class BekenProtocol(ProtocolHandler):
                 
                 # Check for device disconnect / list update every 5 seconds
                 if now - last_recv_time > 5:
-                    paths = find_hid_device_paths(BEKEN_VIDS, BEKEN_DEVICES)
-                    path_check = paths[0][0] if paths else None
-                    if not path_check or path_check not in candidate_paths:
+                    current_devices = find_hid_device_paths(BEKEN_VIDS, BEKEN_DEVICES)
+                    current_paths = [t[0] for t in current_devices]
+                    if primary_path not in current_paths:
                         break
                     last_recv_time = now
 
@@ -100,7 +100,7 @@ class BekenProtocol(ProtocolHandler):
 
                             battery, is_charging = parse_battery_telemetry(d_list, dev_id, is_beken=True)
                             if battery is not None:
-                                app.update_battery_level(battery, charging=is_charging)
+                                app.update_device_state(primary_path, app.current_model, battery, charging=is_charging, activity=True)
                                 last_recv_time = now
                                 got_packet = True
                                 break

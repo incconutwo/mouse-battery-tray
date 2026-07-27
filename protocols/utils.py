@@ -4,6 +4,7 @@ from typing import Optional, Tuple, List
 # For these VIDs, we only trust the canonical 0x03/0x40 telemetry packet structure.
 STRICT_TELEMETRY_VIDS = {
     0x093a,  # Incott / PixArt — config packets have polling rate at idx 4, misread as battery
+    0x33e4,  # G-Wolves — status packets have non-battery bytes at idx 4, misread as battery
 }
 
 def parse_battery_telemetry(
@@ -26,6 +27,10 @@ def parse_battery_telemetry(
     report_id = data[0]
     VALID_REPORT_IDS = {0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x83, 0x84, 0xef}
     if report_id not in VALID_REPORT_IDS:
+        return None, None
+
+    # Reject static string descriptor feature reports (e.g. Pulsar 8K Dongle Gen.2 "ongle Gen.2" report)
+    if report_id == 0x06 and len(data) >= 6 and data[3:6] == [0x64, 0x64, 0x64]:
         return None, None
 
     # --- Canonical 0x03/0x40 telemetry packet (highest confidence) ---
@@ -51,7 +56,7 @@ def parse_battery_telemetry(
             return batt, is_charging
 
     # For VIDs known to send ambiguous config packets, bail out after the canonical check.
-    # This prevents polling-rate bytes from being misread as battery level.
+    # This prevents polling-rate or status bytes from being misread as battery level.
     if vid in STRICT_TELEMETRY_VIDS:
         return None, None
 

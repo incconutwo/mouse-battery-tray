@@ -1,7 +1,7 @@
 import time
 import hid
 from typing import Optional, Tuple, List
-from .base import ProtocolHandler
+from .base import ProtocolHandler, get_physical_device_key
 
 RAZER_VID = 0x1532
 
@@ -199,8 +199,8 @@ class RazerProtocol(ProtocolHandler):
         Enumerate all Razer HID interfaces and pick the best one per PID.
         Avoids exclusive-access interfaces that block feature-report writes on Windows.
         """
-        # Group by PID, track best-scored interface per PID
-        best: dict = {}  # pid -> (score, path, name)
+        # Group by physical_device_key, track best-scored interface per physical device
+        best: dict = {}  # key -> (score, path, name)
 
         for d in hid.enumerate(RAZER_VID):
             pid = d['product_id']
@@ -208,8 +208,9 @@ class RazerProtocol(ProtocolHandler):
             score = _score_razer_interface(d)
             if score == 0:
                 continue
-            if pid not in best or score > best[pid][0]:
-                best[pid] = (score, d['path'], name)
+            key = get_physical_device_key(d)
+            if key not in best or score > best[key][0]:
+                best[key] = (score, d['path'], name)
 
         return [(info[1], "wireless", info[2]) for info in best.values()]
 

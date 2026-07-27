@@ -2,7 +2,7 @@ import re
 import time
 import hid
 from typing import Optional, Tuple, List
-from .base import ProtocolHandler, find_hid_device_paths
+from .base import ProtocolHandler, find_hid_device_paths, get_candidate_paths_for_device
 from .utils import parse_battery_telemetry
 
 COMPX_VIDS = {0x25a7, 0x3710, 0x0c45, 0x093a, 0x24ae, 0x1bcf, 0x3554, 0x320f, 0x3537, 0x3770, 0x373e, 0x33e4, 0x046a}
@@ -102,10 +102,7 @@ class CompxProtocol(ProtocolHandler):
             if m:
                 path_vid = int(m.group(1), 16)
 
-        candidate_tuples = find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
-        candidate_paths = [t[0] for t in candidate_tuples]
-        if primary_path not in candidate_paths:
-            candidate_paths.insert(0, primary_path)
+        candidate_paths = get_candidate_paths_for_device(primary_path, COMPX_VIDS)
 
         open_devices = []
         for p in candidate_paths:
@@ -151,9 +148,9 @@ class CompxProtocol(ProtocolHandler):
                 now = time.time()
                 
                 if now - last_recv_time > 5:
-                    paths = find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
-                    path_check = paths[0][0] if paths else None
-                    if not path_check or path_check not in candidate_paths:
+                    current_devices = find_hid_device_paths(COMPX_VIDS, COMPX_DEVICES)
+                    current_paths = [t[0] for t in current_devices]
+                    if primary_path not in current_paths:
                         break
                     last_recv_time = now
 
@@ -192,7 +189,7 @@ class CompxProtocol(ProtocolHandler):
                             except Exception:
                                 pass
 
-                            for r_id in (0, 6, 3, 4):
+                            for r_id in (0, 3, 4):
                                 try:
                                     resp = dev.get_feature_report(r_id, 64)
                                     if resp:

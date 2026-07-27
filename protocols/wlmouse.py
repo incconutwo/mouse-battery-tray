@@ -1,7 +1,7 @@
 import time
 import hid
 from typing import Optional, Tuple, List
-from .base import ProtocolHandler
+from .base import ProtocolHandler, get_physical_device_key
 
 WLMOUSE_VID = 0x36a7
 
@@ -91,16 +91,23 @@ def _wlmouse_read_passive(path: str, seconds: float = 6.0) -> Tuple[Optional[int
 
 
 class WLMouseProtocol(ProtocolHandler):
-    def find_device(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def find_all_devices(self) -> List[Tuple[str, str, str]]:
+        best: dict = {}  # key -> (path, mode, name)
         fallback = None
         for d in hid.enumerate(WLMOUSE_VID):
             pid = d['product_id']
             name = WLMOUSE_DEVICES.get(pid) or d.get('product_string') or "WLMouse Device"
+            key = get_physical_device_key(d)
             if d.get('usage_page') == 0xffff and d.get('usage') == 0x00:
-                return (d['path'], "wireless", name)
-            if d.get('usage_page') == 0xffff and fallback is None:
+                if key not in best:
+                    best[key] = (d['path'], "wireless", name)
+            elif d.get('usage_page') == 0xffff and fallback is None:
                 fallback = (d['path'], "wireless", name)
-        return fallback if fallback else (None, None, None)
+        return [(info[0], info[1], info[2]) for info in best.values()] if best else ([fallback] if fallback else [])
+
+    def find_device(self) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        devices = self.find_all_devices()
+        return devices[0] if devices else (None, None, None)
 
     def handle_device(self, app, path: str, mode: str, model_name: str) -> None:
         app.current_model = model_name
@@ -120,10 +127,7 @@ class WLMouseProtocol(ProtocolHandler):
                         break
 
             if batt is not None:
-                if app.status in ("disconnected", "charging", "unknown"):
-                    app.status = "connected"
-                    app.update_tray()
-                app.update_battery_level(batt, charging=bool(charging))
+                app.update_device_state(path, model_name, batt, charging=bool(charging), activity=True)
             else:
                 # Disconnected or failed to read
                 # Break to allow main loop to rescan

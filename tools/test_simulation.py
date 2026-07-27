@@ -471,6 +471,7 @@ def run_negative_edgecase_tests():
         ([0x03, 0x10, 0x00, 0x02, 0x00], None, False, "CompX packet with Subtype 0x02 at index 3 and zero battery at index 4"),
         ([0x06, 0x00, 0x00, 0x00, 0x00], None, False, "Generic report with 0 battery"),
         ([0x02, 0x00], None, False, "Truncated short HID report (< 3 bytes)"),
+        ([0x06, 0x00, 0x00, 100, 100, 100, 212, 193, 4, 0, 111, 110, 103, 108, 101], None, False, "Pulsar 8K Dongle Gen.2 String Descriptor report (0x64 header)"),
     ]
 
     failed = 0
@@ -512,8 +513,59 @@ def run_negative_edgecase_tests():
     return failed
 
 
+def run_device_deduplication_tests():
+    print("\n" + "-"*80)
+    print(" === RUNNING PHYSICAL DEVICE DEDUPLICATION TESTS ===")
+    print("-"*80 + "\n")
+
+    failed = 0
+
+    # Test 1: Single physical mouse with 6 HID collection endpoints
+    mock_6_endpoints = [
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": 0, "usage_page": 1, "path": "\\\\?\\hid#vid_1d57&pid_fa60&mi_00#7&1f2d3e4&0&0000#{4d1e}"},
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": 1, "usage_page": 1, "path": "\\\\?\\hid#vid_1d57&pid_fa60&mi_01#7&1f2d3e4&0&0000#{4d1e}"},
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": 2, "usage_page": 10, "path": "\\\\?\\hid#vid_1d57&pid_fa60&mi_02#7&1f2d3e4&0&0000#{4d1e}"},
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": -1, "usage_page": 0xff00, "path": "\\\\?\\hid#vid_1d57&pid_fa60&col01#7&1f2d3e4&0&0000#{4d1e}"},
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": -1, "usage_page": 0xff01, "path": "\\\\?\\hid#vid_1d57&pid_fa60&col02#7&1f2d3e4&0&0000#{4d1e}"},
+        {"vendor_id": 0x1d57, "product_id": 0xfa60, "product_string": "Attack Shark X11 Receiver", "interface_number": -1, "usage_page": 0xff02, "path": "\\\\?\\hid#vid_1d57&pid_fa60&col03#7&1f2d3e4&0&0000#{4d1e}"},
+    ]
+
+    print(f"Dedup Test #01: Single mouse with 6 endpoints deduplicated to 1 device: ", end="")
+    with patch("hid.enumerate", return_value=mock_6_endpoints):
+        from protocols.beken import BekenProtocol
+        handler = BekenProtocol()
+        found = handler.find_all_devices()
+        if len(found) == 1 and found[0][2] == "Attack Shark Mouse":
+            print("[PASSED]")
+        else:
+            print(f"[FAILED]: Expected 1 device, got {len(found)} devices")
+            failed += 1
+
+    # Test 2: Two distinct physical mice connected (Attack Shark X11 + Pulsar X2)
+    mock_2_mice = mock_6_endpoints + [
+        {"vendor_id": 0x25a7, "product_id": 0xfa7c, "product_string": "Pulsar Receiver", "interface_number": 2, "usage_page": 10, "path": "\\\\?\\hid#vid_25a7&pid_fa7c&mi_02#7&3b4a2c&0&0000#{4d1e}"},
+        {"vendor_id": 0x25a7, "product_id": 0xfa7c, "product_string": "Pulsar Receiver", "interface_number": 0, "usage_page": 1, "path": "\\\\?\\hid#vid_25a7&pid_fa7c&mi_00#7&3b4a2c&0&0000#{4d1e}"},
+    ]
+
+    print(f"Dedup Test #02: Two distinct physical mice detected as 2 devices:   ", end="")
+    with patch("hid.enumerate", return_value=mock_2_mice):
+        handlers = get_all_handlers()
+        all_found = []
+        for h in handlers:
+            all_found.extend(h.find_all_devices())
+        if len(all_found) == 2:
+            print("[PASSED]")
+        else:
+            print(f"[FAILED]: Expected 2 devices, got {len(all_found)} devices")
+            failed += 1
+
+    return failed
+
+
 if __name__ == "__main__":
     edge_failures = run_negative_edgecase_tests()
+    dedup_failures = run_device_deduplication_tests()
     sim_failures = run_simulation_tests()
-    sys.exit(edge_failures + sim_failures)
+    sys.exit(edge_failures + dedup_failures + sim_failures)
+
 
